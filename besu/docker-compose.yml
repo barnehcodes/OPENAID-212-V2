@@ -1,0 +1,184 @@
+services:
+  node-1:
+    image: hyperledger/besu:latest
+    container_name: openaid-besu-node-1
+    volumes:
+      - ./genesis.json:/opt/besu/genesis.json:ro
+      - ./config/node-1/data:/opt/besu/data
+    entrypoint:
+      - /opt/besu/bin/besu
+      - --data-path=/opt/besu/data
+      - --genesis-file=/opt/besu/genesis.json
+      - --node-private-key-file=/opt/besu/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,ADMIN,DEBUG,TXPOOL
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-api=ETH,NET,QBFT,WEB3
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --metrics-enabled=true
+      - --metrics-host=0.0.0.0
+      - --metrics-port=9545
+      - --logging=INFO
+    ports:
+      - "18545:8545"
+      - "18546:8546"
+      - "40303:30303"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.11
+
+  node-2:
+    image: hyperledger/besu:latest
+    container_name: openaid-besu-node-2
+    volumes:
+      - ./genesis.json:/opt/besu/genesis.json:ro
+      - ./config/node-2/data:/opt/besu/data
+    entrypoint:
+      - /opt/besu/bin/besu
+      - --data-path=/opt/besu/data
+      - --genesis-file=/opt/besu/genesis.json
+      - --node-private-key-file=/opt/besu/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,ADMIN,DEBUG,TXPOOL
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-api=ETH,NET,QBFT,WEB3
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --metrics-enabled=true
+      - --metrics-host=0.0.0.0
+      - --metrics-port=9545
+      - --logging=INFO
+    ports:
+      - "18547:8545"
+      - "40304:30303"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.12
+
+  node-3:
+    image: hyperledger/besu:latest
+    container_name: openaid-besu-node-3
+    volumes:
+      - ./genesis.json:/opt/besu/genesis.json:ro
+      - ./config/node-3/data:/opt/besu/data
+    entrypoint:
+      - /opt/besu/bin/besu
+      - --data-path=/opt/besu/data
+      - --genesis-file=/opt/besu/genesis.json
+      - --node-private-key-file=/opt/besu/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,ADMIN,DEBUG,TXPOOL
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-api=ETH,NET,QBFT,WEB3
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --metrics-enabled=true
+      - --metrics-host=0.0.0.0
+      - --metrics-port=9545
+      - --logging=INFO
+    ports:
+      - "18548:8545"
+      - "40305:30303"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.13
+
+  node-4:
+    image: hyperledger/besu:latest
+    container_name: openaid-besu-node-4
+    volumes:
+      - ./genesis.json:/opt/besu/genesis.json:ro
+      - ./config/node-4/data:/opt/besu/data
+    entrypoint:
+      - /opt/besu/bin/besu
+      - --data-path=/opt/besu/data
+      - --genesis-file=/opt/besu/genesis.json
+      - --node-private-key-file=/opt/besu/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-api=ETH,NET,QBFT,WEB3,ADMIN,DEBUG,TXPOOL
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-api=ETH,NET,QBFT,WEB3
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --min-gas-price=0
+      - --metrics-enabled=true
+      - --metrics-host=0.0.0.0
+      - --metrics-port=9545
+      - --logging=INFO
+    ports:
+      - "18549:8545"
+      - "40306:30303"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.14
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: openaid-prometheus
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "19090:9090"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.20
+    depends_on:
+      - node-1
+      - node-2
+      - node-3
+      - node-4
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: openaid-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=openaid
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "13001:3000"
+    networks:
+      openaid-besu-net:
+        ipv4_address: 172.16.240.21
+    depends_on:
+      - prometheus
+
+networks:
+  openaid-besu-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.240.0/24
+
+volumes:
+  prometheus-data:
+  grafana-data:

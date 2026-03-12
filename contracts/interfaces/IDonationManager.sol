@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/// @title IDonationManager — External interface consumed by the Governance contract
+/// @notice Defines the surface the Governance contract needs to orchestrate the
+///         donation lifecycle: activate/close crises, release escrow to coordinators,
+///         and read donor contributions for voting-eligibility checks.
+interface IDonationManager {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Crisis lifecycle — called by Governance
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Mark a crisis as active so it can accept donations.
+    /// @dev    Called by Governance when a crisis is declared. Reverts if the crisis
+    ///         is already active to prevent duplicate activations.
+    /// @param crisisId  The crisis identifier (same ID used in Governance).
+    function activateCrisis(uint256 crisisId) external;
+
+    /// @notice Mark a crisis as no longer accepting donations.
+    /// @dev    Called by Governance when a crisis is closed or cancelled.
+    /// @param crisisId  The crisis to deactivate.
+    function deactivateCrisis(uint256 crisisId) external;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Escrow — called by Governance after coordinator election
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Transfer all FT in escrow for a crisis to the elected coordinator.
+    /// @dev    Callable only by the Governance contract. Sets the on-chain coordinator
+    ///         record so subsequent distribution calls can verify the caller.
+    /// @param crisisId    The crisis whose escrow is being released.
+    /// @param coordinator The elected coordinator address that will distribute funds.
+    function releaseEscrowToCoordinator(uint256 crisisId, address coordinator) external;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // View functions — consumed by Governance for voting eligibility
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Return the total FT a donor has contributed to a specific crisis.
+    /// @dev    Governance reads this to decide whether a donor meets the per-role
+    ///         donation cap required to vote in coordinator elections.
+    /// @param donor     The donor address to query.
+    /// @param crisisId  The crisis to query against.
+    /// @return          Total AID tokens donated by this address to this crisis.
+    function getDonorContribution(address donor, uint256 crisisId) external view returns (uint256);
+
+    /// @notice Return the total FT currently held in escrow for a crisis.
+    /// @param crisisId  The crisis to query.
+    /// @return          Total AID tokens in the crisis escrow pool.
+    function getCrisisEscrowBalance(uint256 crisisId) external view returns (uint256);
+}

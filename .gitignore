@@ -1,0 +1,23 @@
+node_modules
+.env
+
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# Besu — generated keys, genesis, and node data (regenerate with generate-keys.sh)
+besu/genesis.json
+besu/config/networkFiles/
+besu/config/node-*/data/
+besu/config/qbft-config.json
