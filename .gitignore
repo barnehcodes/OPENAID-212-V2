@@ -16,6 +16,9 @@ node_modules
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
 
+# Deployment artifacts
+deployments/
+
 # Besu — generated keys, genesis, and node data (regenerate with generate-keys.sh)
 besu/genesis.json
 besu/config/networkFiles/
