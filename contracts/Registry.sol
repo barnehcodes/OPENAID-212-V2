@@ -201,9 +201,7 @@ contract Registry is AccessControl, IRegistry {
     ///      that the multisig threshold has been met (enforced by the Gnosis Safe contract).
     ///      The proof is not stored to keep gas costs low; the transaction calldata provides
     ///      a permanent on-chain audit trail.
-    function verifyNGO(address ngo, bytes calldata proof) external override onlyRole(VERIFICATION_ROLE) {
-        // silence unused-parameter warning — proof is in calldata for auditability only
-        proof;
+    function verifyNGO(address ngo, bytes calldata /* proof */) external override onlyRole(VERIFICATION_ROLE) {
 
         Participant storage p = _registry[ngo];
         if (!p.exists) revert NotRegistered(ngo);
@@ -222,9 +220,8 @@ contract Registry is AccessControl, IRegistry {
     function verifyBeneficiary(
         address beneficiary,
         uint256 crisisId,
-        bytes calldata proof
+        bytes calldata /* proof */
     ) external override onlyRole(VERIFICATION_ROLE) {
-        proof;
 
         Participant storage p = _registry[beneficiary];
         if (!p.exists) revert NotRegistered(beneficiary);

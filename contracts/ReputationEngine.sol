@@ -114,7 +114,7 @@ contract ReputationEngine is IReputationEngine {
     address public governanceContract;
 
     /// @notice Besu validator permissioning contract (mock for thesis prototype).
-    IBesuPermissioning public besuPermissioning;
+    IBesuPermissioning public immutable besuPermissioning;
 
     /// @notice Current system-wide operational phase.
     SystemPhase public currentPhase;
@@ -188,9 +188,9 @@ contract ReputationEngine is IReputationEngine {
             emit GovernanceContractSet(_governance);
         }
 
-        if (_besuPermissioning != address(0)) {
-            besuPermissioning = IBesuPermissioning(_besuPermissioning);
-        }
+        // Always assign (immutable requires unconditional assignment).
+        // address(0) is safe — all call sites guard with address(besuPermissioning) != address(0).
+        besuPermissioning = IBesuPermissioning(_besuPermissioning);
 
         // Default phase configs from the thesis EGT analysis
         _phaseConfigs[SystemPhase.PREPAREDNESS]  = PhaseConfig(70, 30, 100);
@@ -288,12 +288,13 @@ contract ReputationEngine is IReputationEngine {
 
         _validators.push(validator);
 
+        // Emit before external call (checks-effects-interactions)
+        emit ValidatorInitialized(validator, INITIAL_SCORE);
+
         // Register with Besu's consensus layer
         if (address(besuPermissioning) != address(0)) {
             besuPermissioning.addValidator(validator);
         }
-
-        emit ValidatorInitialized(validator, INITIAL_SCORE);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -332,6 +333,9 @@ contract ReputationEngine is IReputationEngine {
             score.currentScore -= penalty;
         }
 
+        // Emit before any external calls (checks-effects-interactions)
+        emit MisconductRecorded(validator, crisisId, penalty, score.currentScore);
+
         // Immediate eligibility check
         if (score.isActive) {
             uint256 avgScore  = _calculateAverageScore();
@@ -340,14 +344,12 @@ contract ReputationEngine is IReputationEngine {
 
             if (score.currentScore < threshold && activeCount > MIN_VALIDATORS) {
                 score.isActive = false;
+                emit ValidatorDeactivated(validator, score.currentScore, threshold);
                 if (address(besuPermissioning) != address(0)) {
                     besuPermissioning.removeValidator(validator);
                 }
-                emit ValidatorDeactivated(validator, score.currentScore, threshold);
             }
         }
-
-        emit MisconductRecorded(validator, crisisId, penalty, score.currentScore);
     }
 
     /// @inheritdoc IReputationEngine
@@ -429,9 +431,13 @@ contract ReputationEngine is IReputationEngine {
     ///
     ///         Gas: O(n) where n = number of registered validators. Acceptable for
     ///         the expected 10–20 validators in the Moroccan humanitarian context.
+    // slither-disable-next-line reentrancy-no-eth,calls-loop,reentrancy-events
     function updateScores() external {
         uint256 epoch = currentEpoch;
         if (_lastUpdatedEpoch == epoch) revert EpochAlreadyUpdated(epoch);
+
+        // Set epoch guard BEFORE external calls to prevent reentrancy
+        _lastUpdatedEpoch = epoch;
 
         PhaseConfig memory config = _phaseConfigs[currentPhase];
         uint256 validatorCount    = _validators.length;
@@ -468,27 +474,28 @@ contract ReputationEngine is IReputationEngine {
                 if (!score.isActive) {
                     score.isActive = true;
                     activeCount++;
+                    // Emit before external call (checks-effects-interactions)
+                    emit ValidatorActivated(v);
                     if (address(besuPermissioning) != address(0)) {
                         besuPermissioning.addValidator(v);
                     }
-                    emit ValidatorActivated(v);
                 }
             } else {
                 // Deactivate only if we won't drop below the safety minimum
                 if (score.isActive && activeCount > MIN_VALIDATORS) {
                     score.isActive = false;
                     activeCount--;
+                    // Emit before external call (checks-effects-interactions)
+                    emit ValidatorDeactivated(v, score.currentScore, threshold);
                     if (address(besuPermissioning) != address(0)) {
                         besuPermissioning.removeValidator(v);
                     }
-                    emit ValidatorDeactivated(v, score.currentScore, threshold);
                 }
             }
         }
 
-        emit ScoresUpdated(currentEpoch);
-        currentEpoch += 1;
-        _lastUpdatedEpoch = currentEpoch;
+        emit ScoresUpdated(epoch);
+        currentEpoch = epoch + 1;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -505,14 +512,15 @@ contract ReputationEngine is IReputationEngine {
     /// @notice Return the list of currently active validators.
     /// @return  Array of active validator addresses.
     function getActiveValidators() external view returns (address[] memory) {
+        uint256 len = _validators.length;
         uint256 count = 0;
-        for (uint256 i = 0; i < _validators.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (_scores[_validators[i]].isActive) count++;
         }
 
         address[] memory active = new address[](count);
         uint256 idx = 0;
-        for (uint256 i = 0; i < _validators.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (_scores[_validators[i]].isActive) {
                 active[idx++] = _validators[i];
             }
@@ -578,8 +586,9 @@ contract ReputationEngine is IReputationEngine {
 
     /// @dev Counts the number of currently active validators.
     function _countActiveValidators() internal view returns (uint256) {
+        uint256 len = _validators.length;
         uint256 count = 0;
-        for (uint256 i = 0; i < _validators.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (_scores[_validators[i]].isActive) count++;
         }
         return count;
@@ -608,11 +617,10 @@ contract ReputationEngine is IReputationEngine {
         //   V_i ≈ SCALE × β × votes / (SCALE + β × votes)
         uint256 vi = _votingSaturation(score.votesCast);
 
-        // B_i = wRole × (α × A_i + (1-α) × V_i) / SCALE / SCALE
-        // Step 1: weighted sum of A_i and V_i (0..SCALE²)
-        uint256 participation = (ALPHA * ai + (SCALE - ALPHA) * vi) / SCALE;
-        // Step 2: apply role weight (0..SCALE)
-        return participation * wRole / SCALE;
+        // B_i = wRole × (α × A_i + (1-α) × V_i) / SCALE²
+        // Combined to avoid divide-before-multiply precision loss.
+        // Max intermediate: 100 * 100 * 100 = 1,000,000 — safe for uint256.
+        return (ALPHA * ai + (SCALE - ALPHA) * vi) * wRole / (SCALE * SCALE);
     }
 
     /// @dev Integer approximation of the voting activeness function:

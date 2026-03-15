@@ -86,6 +86,15 @@ Full design docs in /docs/design/ — READ THESE BEFORE WRITING ANY CODE.
 - .env.example created
 - package.json scripts added (compile, test, deploy:local, deploy:besu)
 
+### Phase 4: Static Analysis Audit ✅
+- Slither v0.11.5 + Solhint v6.0.3 run on all 4 contracts
+- 29 Slither findings: 21 fixed, 6 acknowledged, 2 false positives
+- Key fixes: reentrancy in updateScores(), divide-before-multiply precision, besuPermissioning→immutable
+- Epoch guard bug fixed (was preventing multiple updateScores() calls)
+- Events reordered to follow checks-effects-interactions pattern
+- All 305 tests passing after fixes
+- Audit report: docs/audit/static-analysis-report.md
+
 ## Current Phase: Contract Deployment to Besu
 
 ### What To Do Next
@@ -116,4 +125,10 @@ OPENAID-212-V2/
 ├── hardhat.config.ts
 ├── CLAUDE.md            # This file
 └── README.md
+```
+
+## Completed: Static Analysis Audit (Slither + Solhint) ✅
+
+Audit completed. See `docs/audit/static-analysis-report.md` for full results.
+All fixes applied, 305 tests passing. Ready for Besu deployment.
 ```

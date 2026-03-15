@@ -253,10 +253,11 @@ contract Governance is IGovernance {
             misconductFlagged: false
         });
 
+        // Emit before external call (checks-effects-interactions)
+        emit CrisisDeclared(crisisId, description, severity);
+
         // Open donations in DonationManager for this crisis
         donationManager.activateCrisis(crisisId);
-
-        emit CrisisDeclared(crisisId, description, severity);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -381,14 +382,15 @@ contract Governance is IGovernance {
 
         hasVoted[msg.sender][crisisId] = true;
 
+        // Emit before external call (checks-effects-interactions)
+        emit VoteCast(crisisId, msg.sender, candidate);
+
         // Track validator voting activeness for reputation scoring (V_i component)
         if (address(reputationEngine) != address(0)) {
             if (p.role == IRegistry.Role.GO || p.role == IRegistry.Role.NGO) {
                 reputationEngine.recordVoteCast(msg.sender);
             }
         }
-
-        emit VoteCast(crisisId, msg.sender, candidate);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -432,7 +434,9 @@ contract Governance is IGovernance {
         }
 
         // ── Find winner ────────────────────────────────────────────────────
+        // slither-disable-next-line uninitialized-local
         address winner;
+        // slither-disable-next-line uninitialized-local
         uint256 winnerVotes;
 
         {
@@ -465,6 +469,9 @@ contract Governance is IGovernance {
         crisis.coordinator = winner;
         crisis.phase       = Phase.ACTIVE;
 
+        // Emit before external calls (checks-effects-interactions)
+        emit CoordinatorElected(crisisId, winner, winnerVotes);
+
         // Close donations — coordinator now distributes from their own balance
         donationManager.deactivateCrisis(crisisId);
 
@@ -472,8 +479,6 @@ contract Governance is IGovernance {
         if (donationManager.getCrisisEscrowBalance(crisisId) > 0) {
             donationManager.releaseEscrowToCoordinator(crisisId, winner);
         }
-
-        emit CoordinatorElected(crisisId, winner, winnerVotes);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -565,11 +570,12 @@ contract Governance is IGovernance {
         // Effects before interactions
         crisis.phase = Phase.CLOSED;
 
+        // Emit before external call (checks-effects-interactions)
+        emit MisconductVoteFinalized(crisisId, misconductConfirmed, tally.votesFor, tally.votesAgainst);
+
         if (misconductConfirmed && address(reputationEngine) != address(0)) {
             reputationEngine.recordMisconduct(crisis.coordinator, crisisId);
         }
-
-        emit MisconductVoteFinalized(crisisId, misconductConfirmed, tally.votesFor, tally.votesAgainst);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -595,11 +601,12 @@ contract Governance is IGovernance {
         // Effects before interactions
         crisis.phase = Phase.CLOSED;
 
+        // Emit before external call (checks-effects-interactions)
+        emit CrisisClosed(crisisId);
+
         if (address(reputationEngine) != address(0)) {
             reputationEngine.recordSuccessfulCoordination(crisis.coordinator, crisisId);
         }
-
-        emit CrisisClosed(crisisId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -632,6 +639,7 @@ contract Governance is IGovernance {
 
     /// @dev Reverts if crisisId does not correspond to a declared crisis.
     ///      Uses declaredAt != 0 as the existence sentinel (crisis IDs start at 1).
+    // slither-disable-next-line incorrect-equality
     function _requireCrisisExists(uint256 crisisId) internal view {
         if (_crises[crisisId].declaredAt == 0) revert CrisisNotFound(crisisId);
     }

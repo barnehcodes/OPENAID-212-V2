@@ -822,11 +822,11 @@ describe("ReputationEngine", function () {
       expect(active.length).to.be.gte(Number(MIN_VALIDATORS));
     });
 
-    it("reverts if called twice in the same epoch (epoch guard)", async function () {
+    it("allows consecutive calls (each advances the epoch)", async function () {
       await re.updateScores(); // epoch 1 → 2
-      await expect(re.updateScores())
-        .to.be.revertedWithCustomError(re, "EpochAlreadyUpdated")
-        .withArgs(2n);
+      expect(await re.currentEpoch()).to.equal(2n);
+      await re.updateScores(); // epoch 2 → 3
+      expect(await re.currentEpoch()).to.equal(3n);
     });
   });
 
