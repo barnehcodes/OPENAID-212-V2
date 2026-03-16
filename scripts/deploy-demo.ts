@@ -2,14 +2,24 @@ import { ethers } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
+/**
+ * DEMO DEPLOYMENT — GovernanceDemo with 30-second voting windows
+ *
+ * Deploys a fresh set of all 4 contracts (does NOT touch the production deployment).
+ * Uses GovernanceDemo instead of Governance for short voting/misconduct durations.
+ * Saves addresses to deployments/demo-addresses.json.
+ */
 async function main(): Promise<void> {
+  console.log("╔═══════════════════════════════════════════════════════════════╗");
+  console.log("║  DEMO DEPLOYMENT — GovernanceDemo (30s voting windows)      ║");
+  console.log("╚═══════════════════════════════════════════════════════════════╝\n");
+
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with account:", deployer.address);
   console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
   console.log("---");
 
   // 1. Deploy Registry
-  // Using deployer address as placeholder for all 3 tier authorities
   const Registry = await ethers.getContractFactory("Registry");
   const registry = await Registry.deploy(
     deployer.address, // operationalAuthority (Tier 1)
@@ -30,16 +40,17 @@ async function main(): Promise<void> {
   const donationManagerAddress = await donationManager.getAddress();
   console.log("DonationManager deployed to:", donationManagerAddress);
 
-  // 3. Deploy Governance (reputationEngine = address(0) for now)
-  const Governance = await ethers.getContractFactory("Governance");
-  const governance = await Governance.deploy(
+  // 3. Deploy GovernanceDemo (reputationEngine = address(0) for now)
+  console.log("\n⚡ Using GovernanceDemo (VOTING_DURATION = 30s, MISCONDUCT_VOTE_DURATION = 30s)");
+  const GovernanceDemo = await ethers.getContractFactory("GovernanceDemo");
+  const governance = await GovernanceDemo.deploy(
     registryAddress,
     donationManagerAddress,
     ethers.ZeroAddress // reputationEngine — wired after deployment
   );
   await governance.waitForDeployment();
   const governanceAddress = await governance.getAddress();
-  console.log("Governance deployed to:", governanceAddress);
+  console.log("GovernanceDemo deployed to:", governanceAddress);
 
   // 4. Wire: DonationManager ← Governance
   const txSetGov = await donationManager.setGovernanceContract(governanceAddress);
@@ -60,10 +71,10 @@ async function main(): Promise<void> {
   // 6. Wire: Governance ← ReputationEngine
   const txSetRep = await governance.setReputationEngine(reputationEngineAddress);
   await txSetRep.wait();
-  console.log("Governance.setReputationEngine() wired");
+  console.log("GovernanceDemo.setReputationEngine() wired");
 
   console.log("---");
-  console.log("All contracts deployed and wired successfully!");
+  console.log("All DEMO contracts deployed and wired successfully!");
 
   // Verify each deployment by calling a view function
   console.log("\n--- Post-deployment verification ---");
@@ -73,14 +84,19 @@ async function main(): Promise<void> {
 
   const govAddr = await donationManager.governanceContract();
   console.log("DonationManager.governanceContract():", govAddr);
-  console.log("  matches Governance?", govAddr === governanceAddress);
+  console.log("  matches GovernanceDemo?", govAddr === governanceAddress);
 
   const repAddr = await governance.reputationEngine();
-  console.log("Governance.reputationEngine():", repAddr);
+  console.log("GovernanceDemo.reputationEngine():", repAddr);
   console.log("  matches ReputationEngine?", repAddr === reputationEngineAddress);
 
+  const votingDuration = await governance.VOTING_DURATION();
+  const misconductDuration = await governance.MISCONDUCT_VOTE_DURATION();
+  console.log("GovernanceDemo.VOTING_DURATION():", votingDuration.toString(), "seconds (expected: 30)");
+  console.log("GovernanceDemo.MISCONDUCT_VOTE_DURATION():", misconductDuration.toString(), "seconds (expected: 30)");
+
   const nextCrisisId = await governance.nextCrisisId();
-  console.log("Governance.nextCrisisId():", nextCrisisId.toString(), "(expected: 1)");
+  console.log("GovernanceDemo.nextCrisisId():", nextCrisisId.toString(), "(expected: 1)");
 
   const currentEpoch = await reputationEngine.currentEpoch();
   console.log("ReputationEngine.currentEpoch():", currentEpoch.toString(), "(expected: 1)");
@@ -94,6 +110,11 @@ async function main(): Promise<void> {
     chainId: Number(network.chainId),
     deployedAt: new Date().toISOString(),
     deployer: deployer.address,
+    mode: "DEMO — GovernanceDemo with 30s voting windows",
+    durations: {
+      VOTING_DURATION: "30 seconds",
+      MISCONDUCT_VOTE_DURATION: "30 seconds",
+    },
     contracts: {
       Registry: registryAddress,
       DonationManager: donationManagerAddress,
@@ -107,9 +128,9 @@ async function main(): Promise<void> {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
 
-  const outputPath = path.join(deploymentsDir, "addresses.json");
+  const outputPath = path.join(deploymentsDir, "demo-addresses.json");
   fs.writeFileSync(outputPath, JSON.stringify(addresses, null, 2));
-  console.log("Addresses saved to:", outputPath);
+  console.log("Demo addresses saved to:", outputPath);
 }
 
 main().catch((error) => {

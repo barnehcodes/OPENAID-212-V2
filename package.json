@@ -29,7 +29,10 @@
     "test:gas": "REPORT_GAS=true hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts",
     "deploy:besu": "hardhat run scripts/deploy.ts --network besu",
-    "clean": "hardhat clean"
+    "clean": "hardhat clean",
+    "deploy:demo": "hardhat run scripts/deploy-demo.ts --network besu",
+    "scenario:besu": "hardhat run scripts/scenario.ts --network besu",
+    "scenario:demo": "hardhat run scripts/scenario.ts --network besu"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.6.1"

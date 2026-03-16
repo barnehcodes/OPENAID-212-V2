@@ -24,3 +24,6 @@ besu/genesis.json
 besu/config/networkFiles/
 besu/config/node-*/data/
 besu/config/qbft-config.json
+
+# Scenario test results
+scenario-results/

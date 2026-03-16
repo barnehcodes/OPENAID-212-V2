@@ -95,18 +95,15 @@ Full design docs in /docs/design/ — READ THESE BEFORE WRITING ANY CODE.
 - All 305 tests passing after fixes
 - Audit report: docs/audit/static-analysis-report.md
 
-## Current Phase: Contract Deployment to Besu
-
-### What To Do Next
-- Run scripts/deploy.ts against the Besu network (--network besu)
-- Verify contracts are deployed and callable on Besu
-- Run test suite against Besu (may need timeout adjustments)
-- Run Hyperledger Caliper benchmarks
-
-### Besu Connection
-- Network must be running: ./besu/scripts/start.sh
-- Deploy: npx hardhat run scripts/deploy.ts --network besu
-- Hardhat config already has the besu network configured
+### Phase 5: Contract Deployment to Besu ✅
+- All 4 contracts deployed to Besu QBFT network (chain ID 1337)
+- Registry: 0x42699A7612A82f1d9C36148af9C77354759b210b
+- DonationManager: 0xa50a51c09a5c451C52BB714527E1974b686D8e77
+- Governance: 0x9a3DBCa554e9f6b9257aAa24010DA8377C57c17e
+- ReputationEngine: 0x2E1f232a9439C3D459FcEca0BeEf13acc8259Dd8
+- All post-deployment wiring verified (governance↔DM, governance↔RE)
+- Fix applied: Besu min gas price is 7, not 0 — hardhat.config.ts updated
+- Deployment record saved to deployments/addresses.json
 
 ## Project Structure
 ```
@@ -132,3 +129,25 @@ OPENAID-212-V2/
 Audit completed. See `docs/audit/static-analysis-report.md` for full results.
 All fixes applied, 305 tests passing. Ready for Besu deployment.
 ```
+
+## Current Phase: End-to-End Scenario Testing on Besu
+
+### What We're Doing Now
+Running a full crisis lifecycle scenario against the live Besu network.
+This is an integration test that exercises every contract function on-chain.
+
+### Goals
+- Prove the system works end-to-end on a real QBFT network (not just Hardhat tests)
+- Collect real transaction data (gas costs, block numbers, timing) for the thesis
+- Test both the clean path (successful coordination) and misconduct path (slashing)
+- Generate Grafana-visible transaction activity for screenshots
+
+### What NOT To Do
+- Don't build a UI yet — that comes later
+- Don't modify contract code — if something fails, diagnose and fix the script
+- Don't redeploy contracts — use the existing deployment addresses
+- Keep the scenario script idempotent where possible (use fresh accounts for reruns)
+
+### Future Phase: Frontend UI
+A web UI will be built after all backend integration testing is complete.
+The UI is a presentation layer — all business logic lives in the contracts.
