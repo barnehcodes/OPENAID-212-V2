@@ -49,6 +49,8 @@ Full design docs in /docs/design/ — READ THESE BEFORE WRITING ANY CODE.
 - Reputation scoring uses quadratic penalties and linear rewards (asymmetric by design).
 - All math uses integer arithmetic scaled by 100. No decimals.
 - ERC20 functionality is inherited inside DonationManager. In-kind donations use a custom struct + mapping (NOT ERC721 inheritance — avoids signature collision).
+- DonationManager supports a `directDonateFT()` function for non-crisis donor-to-beneficiary transfers. FT only (in-kind stays crisis-only). Does NOT update donorContribution — direct donations grant no governance voting power.
+- ReputationEngine.updateScores() is triggered by an off-chain cron script (scripts/epoch-cron.ts) on a time-based schedule. The contract is already permissionless for this call.
 
 ## What NOT To Do
 
@@ -105,49 +107,98 @@ Full design docs in /docs/design/ — READ THESE BEFORE WRITING ANY CODE.
 - Fix applied: Besu min gas price is 7, not 0 — hardhat.config.ts updated
 - Deployment record saved to deployments/addresses.json
 
+### Phase 6: End-to-End Scenario Testing on Besu ✅
+- Full crisis lifecycle tested on live QBFT network (83 transactions)
+- Demo contracts deployed (GovernanceDemo with 30s voting windows) for Besu compatibility
+- Scenario A (clean path): DECLARED → VOTING → ACTIVE → CLOSED with GO compression verified
+- Scenario B (misconduct path): DECLARED → VOTING → ACTIVE → REVIEW → CLOSED with slashing
+- Epoch update ran successfully, all 5 validators scored
+- Results saved to scenario-results/summary.json
+- Demo deployment at deployments/demo-addresses.json
+
 ## Project Structure
 ```
 OPENAID-212-V2/
 ├── contracts/           # Solidity smart contracts
 │   ├── interfaces/      # Contract interfaces (IRegistry, etc.)
 │   ├── mocks/           # Test doubles (MockBesuPermissioning, etc.)
+│   ├── demo/            # Demo variants (GovernanceDemo with short windows)
 │   ├── Registry.sol
 │   ├── DonationManager.sol
 │   ├── Governance.sol
 │   └── ReputationEngine.sol
 ├── test/                # Hardhat test files (TypeScript)
-├── scripts/             # Deployment scripts
+├── scripts/             # Deployment and scenario scripts
 ├── docs/design/         # Contract design documents
+├── docs/audit/          # Static analysis audit report
 ├── besu/                # QBFT network (Docker Compose, keys, monitoring)
+├── deployments/         # Contract addresses (addresses.json, demo-addresses.json)
+├── scenario-results/    # Scenario test output (summary.json)
 ├── hardhat.config.ts
 ├── CLAUDE.md            # This file
 └── README.md
 ```
 
-## Completed: Static Analysis Audit (Slither + Solhint) ✅
-
-Audit completed. See `docs/audit/static-analysis-report.md` for full results.
-All fixes applied, 305 tests passing. Ready for Besu deployment.
-```
-
-## Current Phase: End-to-End Scenario Testing on Besu
+## Current Phase: Feature Additions (Direct Donations + Epoch Trigger)
 
 ### What We're Doing Now
-Running a full crisis lifecycle scenario against the live Besu network.
-This is an integration test that exercises every contract function on-chain.
+Two scoped additions to the existing codebase, agreed upon during a contract architecture review.
 
-### Goals
-- Prove the system works end-to-end on a real QBFT network (not just Hardhat tests)
-- Collect real transaction data (gas costs, block numbers, timing) for the thesis
-- Test both the clean path (successful coordination) and misconduct path (slashing)
-- Generate Grafana-visible transaction activity for screenshots
+### Change 1: directDonateFT() in DonationManager
+- Add a new function allowing donors to send AID directly to beneficiaries without a crisis
+- Only modifies DonationManager.sol and IDonationManager.sol
+- New tests added to test/DonationManager.test.ts
+- Brief direct donation step added to scenario script
+
+### Change 2: Epoch Trigger Cron Script
+- New script scripts/epoch-cron.ts that calls updateScores() once per invocation
+- No contract changes — uses existing permissionless updateScores()
+- Designed to be called by an external scheduler (cron)
+- New npm script: epoch:update
 
 ### What NOT To Do
-- Don't build a UI yet — that comes later
-- Don't modify contract code — if something fails, diagnose and fix the script
-- Don't redeploy contracts — use the existing deployment addresses
-- Keep the scenario script idempotent where possible (use fresh accounts for reruns)
+- Don't modify Registry.sol, Governance.sol, or ReputationEngine.sol
+- Don't modify GovernanceDemo.sol
+- Don't modify existing tests — only add new test cases
+- Don't modify existing scenario flow — only add the direct donation step before Scenario A
+- All 305+ existing tests must continue to pass
 
-### Future Phase: Frontend UI
-A web UI will be built after all backend integration testing is complete.
+### After This Phase: Frontend UI
+A web UI will be built after these additions are verified.
 The UI is a presentation layer — all business logic lives in the contracts.
+
+
+                                                                                          
+● The epoch keeps advancing since the contract's epoch guard allows one call per epoch and each call advances  
+  the epoch. The graceful handling would only trigger if updateScores() were called twice within the same epoch
+   (same block/transaction context). The script works correctly in both cases.
+                                                                                                               
+  Results summary:                                          
+                                                                                                               
+  ┌──────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
+  │            Check             │                                Status                                 │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Compilation                  │ Already up to date                                                    │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Demo deployment              │ 4 contracts deployed, all wiring verified                             │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Step 0: Direct Donation      │ donor1 sent 50 AID directly to beneficiary1 (gas: 85,503)             │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Scenario A (clean path)      │ DECLARED → VOTING → ACTIVE → CLOSED, ngo2 elected via GO compression  │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Scenario B (misconduct path) │ DECLARED → VOTING → ACTIVE → REVIEW → CLOSED, ngo1 slashed (100 → 96) │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Epoch update (in scenario)   │ Epoch 1 → 2, all 5 validators scored                                  │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Epoch cron script            │ Worked correctly, advanced epoch 2 → 3 → 4 on successive runs         │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Total transactions           │ 84 (83 previous + 1 new directDonateFT)                               │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Total AID minted             │ 10,350 (10,300 crisis + 50 direct)                                    │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Beneficiary 1 balance        │ 2,050 (50 direct + 2,000 crisis distribution)                         │
+  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
+  │ Errors                       │ None                                                                  │
+  └──────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+
+                                            

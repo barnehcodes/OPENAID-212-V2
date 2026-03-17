@@ -126,6 +126,9 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice The requested in-kind item ID does not exist.
     error NFTNotFound(uint256 nftId);
 
+    /// @notice The target address is not a registered beneficiary.
+    error NotRegisteredBeneficiary(address beneficiary);
+
     // ─────────────────────────────────────────────────────────────────────────
     // Events
     // ─────────────────────────────────────────────────────────────────────────
@@ -139,6 +142,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     event CrisisActivated(uint256 indexed crisisId);
     event CrisisDeactivated(uint256 indexed crisisId);
     event GovernanceContractSet(address indexed governance);
+    event DirectFTDonation(address indexed donor, address indexed beneficiary, uint256 amount);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
@@ -238,6 +242,30 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         donorContribution[msg.sender][crisisId]   += amount;
 
         emit FTDonationReceived(msg.sender, crisisId, amount);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct donations — non-crisis path
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Mint AID tokens directly to a registered beneficiary without a crisis.
+    /// @dev    Non-crisis donation path for registered participants who want to give
+    ///         directly to beneficiaries. Does NOT update donorContribution (direct
+    ///         donations grant no governance voting power). Does NOT require an active
+    ///         crisis or escrow — tokens are minted directly to the beneficiary.
+    /// @param beneficiary  A registered participant with Role.Beneficiary.
+    /// @param amount       Number of AID tokens to mint (must be > 0).
+    function directDonateFT(address beneficiary, uint256 amount) external override {
+        if (!registry.getParticipant(msg.sender).exists) revert NotRegistered(msg.sender);
+        if (amount == 0) revert ZeroAmount();
+
+        IRegistry.Participant memory p = registry.getParticipant(beneficiary);
+        if (!p.exists || p.role != IRegistry.Role.Beneficiary) {
+            revert NotRegisteredBeneficiary(beneficiary);
+        }
+
+        _mint(beneficiary, amount);
+        emit DirectFTDonation(msg.sender, beneficiary, amount);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

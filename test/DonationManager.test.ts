@@ -677,4 +677,77 @@ describe("DonationManager", function () {
       expect(record.donor).to.equal(ethers.ZeroAddress);
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // directDonateFT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("directDonateFT()", function () {
+    it("registered donor can donate directly to a registered beneficiary", async function () {
+      await dm.connect(donor1).directDonateFT(beneficiary1.address, 50n);
+      expect(await dm.balanceOf(beneficiary1.address)).to.equal(50n);
+    });
+
+    it("mints tokens directly to the beneficiary (not escrow)", async function () {
+      await dm.connect(donor1).directDonateFT(beneficiary1.address, 100n);
+      expect(await dm.balanceOf(beneficiary1.address)).to.equal(100n);
+      // Contract (escrow) balance should be unchanged
+      expect(await dm.balanceOf(dm.target)).to.equal(0n);
+    });
+
+    it("does NOT update donorContribution mapping", async function () {
+      await dm.connect(donor1).directDonateFT(beneficiary1.address, 200n);
+      // donorContribution is per-crisis; direct donations have no crisis
+      // Check crisis 1 (the active one) — should still be 0
+      expect(await dm.donorContribution(donor1.address, CRISIS_ID)).to.equal(0n);
+    });
+
+    it("does NOT update crisisEscrow", async function () {
+      await dm.connect(donor1).directDonateFT(beneficiary1.address, 100n);
+      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(0n);
+    });
+
+    it("works when no crisis is active", async function () {
+      // Deactivate the only active crisis
+      await dm.connect(governance).deactivateCrisis(CRISIS_ID);
+      // Direct donation should still work
+      await dm.connect(donor1).directDonateFT(beneficiary1.address, 50n);
+      expect(await dm.balanceOf(beneficiary1.address)).to.equal(50n);
+    });
+
+    it("emits DirectFTDonation event with correct args", async function () {
+      await expect(dm.connect(donor1).directDonateFT(beneficiary1.address, 75n))
+        .to.emit(dm, "DirectFTDonation")
+        .withArgs(donor1.address, beneficiary1.address, 75n);
+    });
+
+    it("reverts when caller is not registered", async function () {
+      await expect(dm.connect(stranger).directDonateFT(beneficiary1.address, 50n))
+        .to.be.revertedWithCustomError(dm, "NotRegistered")
+        .withArgs(stranger.address);
+    });
+
+    it("reverts when beneficiary is not registered", async function () {
+      await expect(dm.connect(donor1).directDonateFT(stranger.address, 50n))
+        .to.be.revertedWithCustomError(dm, "NotRegisteredBeneficiary")
+        .withArgs(stranger.address);
+    });
+
+    it("reverts when beneficiary is registered but wrong role (Donor)", async function () {
+      await expect(dm.connect(donor1).directDonateFT(donor2.address, 50n))
+        .to.be.revertedWithCustomError(dm, "NotRegisteredBeneficiary")
+        .withArgs(donor2.address);
+    });
+
+    it("reverts when beneficiary is registered but wrong role (PrivateCompany)", async function () {
+      await expect(dm.connect(donor1).directDonateFT(company.address, 50n))
+        .to.be.revertedWithCustomError(dm, "NotRegisteredBeneficiary")
+        .withArgs(company.address);
+    });
+
+    it("reverts when amount is zero", async function () {
+      await expect(dm.connect(donor1).directDonateFT(beneficiary1.address, 0n))
+        .to.be.revertedWithCustomError(dm, "ZeroAmount");
+    });
+  });
 });

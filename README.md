@@ -49,6 +49,16 @@ Contracts are deployed in order: Registry → DonationManager → Governance →
 
 For detailed design documents, see [docs/design/](docs/design/).
 
+## Epoch Management
+
+The ReputationEngine recalculates validator scores at epoch boundaries. To trigger an epoch update manually:
+
+```bash
+npm run epoch:update
+```
+
+For automated updates, schedule this command via cron (e.g., every 24 hours). The contract prevents duplicate calls within the same epoch.
+
 ## Besu Network
 
 The project includes a 4-node QBFT permissioned network configuration. See [besu/README.md](besu/README.md) for setup and operation instructions.

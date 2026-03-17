@@ -294,6 +294,19 @@ async function main(): Promise<void> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  //  STEP 0: DIRECT DONATION (non-crisis path)
+  // ═══════════════════════════════════════════════════════════════════════
+  section("STEP 0: DIRECT DONATION (non-crisis path)");
+
+  step("0. Direct Donation — donor1 sends 50 AID directly to beneficiary1");
+  await logTx("0", "directDonateFT(b1, 50)", donationManager.connect(donor1).directDonateFT(beneficiary1.address, 50));
+  {
+    const b1Balance = await donationManager.balanceOf(beneficiary1.address);
+    console.log(`  Beneficiary 1 AID balance after direct donation: ${b1Balance}`);
+    console.log(`  donorContribution unchanged (direct donations grant no voting power)`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   //  SCENARIO A: CLEAN CRISIS (Happy Path)
   // ═══════════════════════════════════════════════════════════════════════
   section("SCENARIO A: CLEAN CRISIS (Happy Path)");

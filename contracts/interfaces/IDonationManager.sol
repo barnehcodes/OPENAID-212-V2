@@ -48,4 +48,15 @@ interface IDonationManager {
     /// @param crisisId  The crisis to query.
     /// @return          Total AID tokens in the crisis escrow pool.
     function getCrisisEscrowBalance(uint256 crisisId) external view returns (uint256);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct donations — non-crisis path
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Mint AID tokens directly to a registered beneficiary without a crisis.
+    /// @dev    Non-crisis donation path. Does NOT update donorContribution (no governance
+    ///         voting power from direct donations). Does NOT require an active crisis.
+    /// @param beneficiary  A registered participant with Role.Beneficiary.
+    /// @param amount       Number of AID tokens to mint (must be > 0).
+    function directDonateFT(address beneficiary, uint256 amount) external;
 }
