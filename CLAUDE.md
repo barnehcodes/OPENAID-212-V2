@@ -139,34 +139,41 @@ OPENAID-212-V2/
 └── README.md
 ```
 
-## Current Phase: Feature Additions (Direct Donations + Epoch Trigger)
+## Current Phase: EGT Model Alignment Fix + Technical Documentation
+
+### What's Done
+- All 4 contracts implemented and tested (305 tests passing)
+- Besu QBFT network running (4 nodes, blocks producing)
+- Full scenario testing complete (84 transactions, both clean + misconduct paths)
+- Static analysis audit complete (Slither + Solhint)
+- Demo deployment with short voting durations working
 
 ### What We're Doing Now
-Two scoped additions to the existing codebase, agreed upon during a contract architecture review.
+1. Fixing a scoring formula gap: k2 phase weighting not applied to C_i (penalties/rewards)
+2. Generating comprehensive technical documentation for the thesis report
 
-### Change 1: directDonateFT() in DonationManager
-- Add a new function allowing donors to send AID directly to beneficiaries without a crisis
-- Only modifies DonationManager.sol and IDonationManager.sol
-- New tests added to test/DonationManager.test.ts
-- Brief direct donation step added to scenario script
+### Change 1: Apply k2 weighting to C_i (ReputationEngine.sol)
+- recordMisconduct() and recordSuccessfulCoordination() currently apply penalties/rewards at full force
+- They need to multiply by config.k2 / SCALE before applying, so phase weights affect behavioral scoring
+- During preparedness (k2=30), penalties should hit at 30% force; during active crisis (k2=60), at 60%
+- This is the ONLY contract code change needed
+- All 305+ existing tests must continue to pass
+- Add new test cases for the k2 weighting behavior
 
-### Change 2: Epoch Trigger Cron Script
-- New script scripts/epoch-cron.ts that calls updateScores() once per invocation
-- No contract changes — uses existing permissionless updateScores()
-- Designed to be called by an external scheduler (cron)
-- New npm script: epoch:update
+### Change 2: Technical Documentation (Markdown with Mermaid diagrams)
+- Create docs/technical/ directory
+- One doc per contract + one system architecture overview
+- These serve as source of truth for the thesis report chapters
+- Include Mermaid diagrams where relevant
+- Reference actual contract code — use real function names, constants, state variables
 
 ### What NOT To Do
-- Don't modify Registry.sol, Governance.sol, or ReputationEngine.sol
+- Don't modify Registry.sol, Governance.sol, or DonationManager.sol
 - Don't modify GovernanceDemo.sol
-- Don't modify existing tests — only add new test cases
-- Don't modify existing scenario flow — only add the direct donation step before Scenario A
+- Don't modify existing tests — only add new test cases for k2 weighting
+- Don't re-run scenario scripts — the k2 change is internal math, not workflow
+- Don't create docx files — plain Markdown with Mermaid code blocks only
 - All 305+ existing tests must continue to pass
-
-### After This Phase: Frontend UI
-A web UI will be built after these additions are verified.
-The UI is a presentation layer — all business logic lives in the contracts.
-
 
                                                                                           
 ● The epoch keeps advancing since the contract's epoch guard allows one call per epoch and each call advances  

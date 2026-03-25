@@ -20,8 +20,8 @@ import "./interfaces/IBesuPermissioning.sol";
 ///        V_i ≈ β×votes / (SCALE + β×votes)  (integer approximation of 1 - e^(-β×votes))
 ///
 ///      C_i (Behavioral Quality) — applied immediately via recordMisconduct / recordSuccess:
-///        Reward = R0 × w_role × ceilingReducer
-///        Penalty = P0 × w_role × (1 + α_crisis × n_misconduct²)
+///        Reward = R0 × w_role × ceilingReducer × (k2 / SCALE)
+///        Penalty = P0 × w_role × (1 + α_crisis × n_misconduct²) × (k2 / SCALE)
 ///
 ///      Eligibility:
 ///        NGOs:  score ≥ averageScore
@@ -326,6 +326,9 @@ contract ReputationEngine is IReputationEngine {
         // Scaled:    P0 * wRole * (SCALE + alphaCrisis * n * n) / (SCALE * SCALE)
         uint256 penalty = P0 * wRole * (SCALE + config.alphaCrisis * n * n) / (SCALE * SCALE);
 
+        // Apply phase-dependent k2 weighting to behavioral scoring
+        penalty = penalty * config.k2 / SCALE;
+
         // Floor score at 0
         if (penalty >= score.currentScore) {
             score.currentScore = 0;
@@ -369,6 +372,10 @@ contract ReputationEngine is IReputationEngine {
         // R_reward = R0 × w_role × ceilingReducer
         // Scaled:   R0 * wRole * ceilingReducer / (SCALE * SCALE)
         uint256 reward = R0 * wRole * ceilingReducer / (SCALE * SCALE);
+
+        // Apply phase-dependent k2 weighting to behavioral scoring
+        PhaseConfig memory config = _phaseConfigs[currentPhase];
+        reward = reward * config.k2 / SCALE;
 
         score.currentScore += reward;
 

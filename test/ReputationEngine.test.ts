@@ -323,58 +323,58 @@ describe("ReputationEngine", function () {
 
     // ── Penalty formula verification (matches thesis examples) ─────────────
 
-    it("1st offense (NGO, normal phase): penalty = 4", async function () {
-      // P_penalty = P0 * wRole * (SCALE + alphaCrisis * n²) / (SCALE * SCALE)
-      // = 2 * 100 * (100 + 100 * 1) / 10000 = 2 * 100 * 200 / 10000 = 4
+    it("1st offense (NGO, PREPAREDNESS): penalty = 1", async function () {
+      // P_penalty = P0 * wRole * (SCALE + alphaCrisis * n²) / (SCALE * SCALE) * k2 / SCALE
+      // base = 2 * 100 * (100 + 100 * 1) / 10000 = 4, then 4 * 30 / 100 = 1
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 1n);
+    });
+
+    it("2nd offense (NGO, PREPAREDNESS): penalty = 3", async function () {
+      // base n=2: 2 * 100 * (100 + 100 * 4) / 10000 = 10, then 10 * 30 / 100 = 3
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      await re.connect(governance).recordMisconduct(ngo1.address, 2n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 1n - 3n);
+    });
+
+    it("3rd offense (NGO, PREPAREDNESS): penalty = 6", async function () {
+      // base n=3: 2 * 100 * (100 + 100 * 9) / 10000 = 20, then 20 * 30 / 100 = 6
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      await re.connect(governance).recordMisconduct(ngo1.address, 2n);
+      await re.connect(governance).recordMisconduct(ngo1.address, 3n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 1n - 3n - 6n);
+    });
+
+    it("1st offense (NGO, active crisis): penalty = 4", async function () {
+      // Switch to ACTIVE_CRISIS phase (alphaCrisis = 250, k2 = 60)
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
+      // base = 2 * 100 * (100 + 250 * 1) / 10000 = 7, then 7 * 60 / 100 = 4
       await re.connect(governance).recordMisconduct(ngo1.address, 1n);
       const score = await re.getValidatorScore(ngo1.address);
       expect(score.currentScore).to.equal(INITIAL_SCORE - 4n);
     });
 
-    it("2nd offense (NGO, normal phase): penalty = 10", async function () {
-      // n=2: 2 * 100 * (100 + 100 * 4) / 10000 = 2 * 100 * 500 / 10000 = 10
+    it("3rd offense (NGO, active crisis): cumulative penalty = 45", async function () {
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
+      // n=1: base=7, 7*60/100 = 4
       await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      // n=2: base=22, 22*60/100 = 13
       await re.connect(governance).recordMisconduct(ngo1.address, 2n);
-      const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE - 4n - 10n);
-    });
-
-    it("3rd offense (NGO, normal phase): penalty = 20", async function () {
-      // n=3: 2 * 100 * (100 + 100 * 9) / 10000 = 2 * 100 * 1000 / 10000 = 20
-      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
-      await re.connect(governance).recordMisconduct(ngo1.address, 2n);
+      // n=3: base=47, 47*60/100 = 28
       await re.connect(governance).recordMisconduct(ngo1.address, 3n);
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE - 4n - 10n - 20n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 4n - 13n - 28n);
     });
 
-    it("1st offense (NGO, active crisis): penalty = 7", async function () {
-      // Switch to ACTIVE_CRISIS phase (alphaCrisis = 250)
-      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
-      // 2 * 100 * (100 + 250 * 1) / 10000 = 2 * 100 * 350 / 10000 = 7
-      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
-      const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE - 7n);
-    });
-
-    it("3rd offense (NGO, active crisis): penalty = 47", async function () {
-      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
-      // n=1: 2*100*(100+250*1)/10000 = 7
-      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
-      // n=2: 2*100*(100+250*4)/10000 = 2*100*1100/10000 = 22
-      await re.connect(governance).recordMisconduct(ngo1.address, 2n);
-      // n=3: 2*100*(100+250*9)/10000 = 2*100*2350/10000 = 47
-      await re.connect(governance).recordMisconduct(ngo1.address, 3n);
-      const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE - 7n - 22n - 47n);
-    });
-
-    it("GO penalty is reduced by role weight (0.85)", async function () {
-      // 1st offense GO, normal: 2 * 85 * (100 + 100 * 1) / 10000 = 2 * 85 * 200 / 10000 = 3
-      // (3.4 truncated to 3)
+    it("GO penalty is reduced by role weight (0.85) and k2", async function () {
+      // 1st offense GO, PREPAREDNESS: base = 2 * 85 * 200 / 10000 = 3, then 3 * 30 / 100 = 0
+      // (truncated to 0 by integer division — very light penalty in preparedness)
       await re.connect(governance).recordMisconduct(go1.address, 1n);
       const score = await re.getValidatorScore(go1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE - 3n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 0n);
     });
 
     it("floors score at 0 (does not underflow)", async function () {
@@ -393,7 +393,7 @@ describe("ReputationEngine", function () {
         re.connect(governance).recordMisconduct(ngo1.address, 1n)
       )
         .to.emit(re, "MisconductRecorded")
-        .withArgs(ngo1.address, 1n, 4n, INITIAL_SCORE - 4n);
+        .withArgs(ngo1.address, 1n, 1n, INITIAL_SCORE - 1n);
     });
 
     it("deactivates validator if score drops below threshold", async function () {
@@ -445,23 +445,23 @@ describe("ReputationEngine", function () {
       await initializeStandardValidators();
     });
 
-    it("awards full reward to NGO with 0 timeouts: 10 points", async function () {
-      // R0 * W_ROLE_NGO * ceilingReducer / (SCALE * SCALE)
-      // = 10 * 100 * 100 / 10000 = 10
+    it("awards k2-weighted reward to NGO with 0 timeouts: 3 points", async function () {
+      // base = R0 * W_ROLE_NGO * ceilingReducer / (SCALE * SCALE) = 10 * 100 * 100 / 10000 = 10
+      // k2-weighted: 10 * 30 / 100 = 3
       await re
         .connect(governance)
         .recordSuccessfulCoordination(ngo1.address, 1n);
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE + 10n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 3n);
     });
 
-    it("awards reduced reward to GO with 0 timeouts: 8 points", async function () {
-      // 10 * 85 * 100 / 10000 = 8 (8.5 truncated)
+    it("awards k2-weighted reward to GO with 0 timeouts: 2 points", async function () {
+      // base = 10 * 85 * 100 / 10000 = 8, then 8 * 30 / 100 = 2
       await re
         .connect(governance)
         .recordSuccessfulCoordination(go1.address, 1n);
       const score = await re.getValidatorScore(go1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE + 8n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 2n);
     });
 
     it("ceiling reducer dampens reward after timeouts", async function () {
@@ -471,12 +471,12 @@ describe("ReputationEngine", function () {
         .recordParticipation(ngo1.address, false);
 
       // ceilingReducer for 1 timeout: 10000 / (100 + 50*69/100) = 10000/134 = 74
-      // reward = 10 * 100 * 74 / 10000 = 7
+      // base reward = 10 * 100 * 74 / 10000 = 7, then 7 * 30 / 100 = 2
       await re
         .connect(governance)
         .recordSuccessfulCoordination(ngo1.address, 1n);
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE + 7n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 2n);
     });
 
     it("more timeouts further reduce reward", async function () {
@@ -486,23 +486,24 @@ describe("ReputationEngine", function () {
           .connect(operationalAuth)
           .recordParticipation(ngo1.address, false);
       }
-      // ceilingReducer: 10000 / (100 + 50*161/100) = 10000/(100+80) = 10000/180 = 55
-      // reward = 10 * 100 * 55 / 10000 = 5
+      // ceilingReducer: 10000 / (100 + 50*161/100) = 10000/180 = 55
+      // base reward = 10 * 100 * 55 / 10000 = 5, then 5 * 30 / 100 = 1
       await re
         .connect(governance)
         .recordSuccessfulCoordination(ngo1.address, 1n);
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE + 5n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 1n);
     });
 
     it("emits SuccessfulCoordination with reward and new score", async function () {
+      // base = 10, k2-weighted = 3
       await expect(
         re
           .connect(governance)
           .recordSuccessfulCoordination(ngo1.address, 1n)
       )
         .to.emit(re, "SuccessfulCoordination")
-        .withArgs(ngo1.address, 1n, 10n, INITIAL_SCORE + 10n);
+        .withArgs(ngo1.address, 1n, 3n, INITIAL_SCORE + 3n);
     });
 
     it("reverts when caller is not governance", async function () {
@@ -785,8 +786,9 @@ describe("ReputationEngine", function () {
       expect(afterPenalty.isActive).to.be.false;
 
       // Now boost ngo1's score via multiple successful coordinations
+      // (rewards are k2-weighted at 30%, so more coordinations needed)
       await re.connect(operationalAuth).setSystemPhase(SystemPhase.PREPAREDNESS);
-      for (let i = 1; i <= 20; i++) {
+      for (let i = 1; i <= 40; i++) {
         await re
           .connect(governance)
           .recordSuccessfulCoordination(ngo1.address, BigInt(i));
@@ -958,11 +960,13 @@ describe("ReputationEngine", function () {
       // All at 100 → average = 100
       expect(await re.getAverageScore()).to.equal(100n);
 
-      // Boost ngo1 → average rises
-      await re
-        .connect(governance)
-        .recordSuccessfulCoordination(ngo1.address, 1n);
-      // (100 + 100 + 110 + 100 + 100) / 5 = 102
+      // Boost ngo1 via multiple coordinations → average rises
+      for (let c = 1; c <= 4; c++) {
+        await re
+          .connect(governance)
+          .recordSuccessfulCoordination(ngo1.address, BigInt(c));
+      }
+      // ngo1: 100 + 4*3 = 112. avg = (100 + 100 + 112 + 100 + 100) / 5 = 102
       expect(await re.getAverageScore()).to.equal(102n);
     });
 
@@ -999,20 +1003,20 @@ describe("ReputationEngine", function () {
           .recordSuccessfulCoordination(ngo1.address, BigInt(c));
       }
 
-      // ngo1 should have gained 30 points (10 × 3)
+      // ngo1 should have gained 9 points (3 × 3, k2-weighted)
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(INITIAL_SCORE + 30n);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 9n);
     });
 
     it("misconduct followed by recovery path", async function () {
       await initializeStandardValidators();
 
-      // 1st misconduct
+      // 1st misconduct (k2=30: penalty = 4*30/100 = 1)
       await re.connect(governance).recordMisconduct(ngo1.address, 1n);
       let score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(96n); // 100 - 4
+      expect(score.currentScore).to.equal(99n); // 100 - 1
 
-      // 4 successful coordinations to recover
+      // 4 successful coordinations to recover (each = 3 points, k2-weighted)
       for (let c = 2; c <= 5; c++) {
         await re
           .connect(governance)
@@ -1020,28 +1024,28 @@ describe("ReputationEngine", function () {
       }
 
       score = await re.getValidatorScore(ngo1.address);
-      // 96 + 40 = 136
-      expect(score.currentScore).to.equal(136n);
+      // 99 + 12 = 111
+      expect(score.currentScore).to.equal(111n);
     });
 
     it("phase change affects penalty severity", async function () {
       await initializeStandardValidators();
 
-      // 1st offense in PREPAREDNESS: penalty = 4
+      // 1st offense in PREPAREDNESS: base=4, k2=30 → penalty=1
       await re.connect(governance).recordMisconduct(ngo1.address, 1n);
       let score1 = await re.getValidatorScore(ngo1.address);
-      const afterNormalPenalty = score1.currentScore; // 96
+      const afterNormalPenalty = score1.currentScore; // 99
 
       // Switch to ACTIVE_CRISIS
       await re
         .connect(operationalAuth)
         .setSystemPhase(SystemPhase.ACTIVE_CRISIS);
 
-      // 2nd offense in ACTIVE_CRISIS: penalty = P0 * wRole * (SCALE + 250 * 4) / SCALE²
-      // = 2 * 100 * (100 + 1000) / 10000 = 2 * 100 * 1100 / 10000 = 22
+      // 2nd offense in ACTIVE_CRISIS: base = P0 * wRole * (SCALE + 250 * 4) / SCALE²
+      // = 2 * 100 * 1100 / 10000 = 22, then 22 * 60 / 100 = 13
       await re.connect(governance).recordMisconduct(ngo1.address, 2n);
       score1 = await re.getValidatorScore(ngo1.address);
-      expect(score1.currentScore).to.equal(afterNormalPenalty - 22n);
+      expect(score1.currentScore).to.equal(afterNormalPenalty - 13n);
     });
 
     it("epoch update combined with crisis outcomes", async function () {
@@ -1056,14 +1060,14 @@ describe("ReputationEngine", function () {
       await re
         .connect(governance)
         .recordSuccessfulCoordination(ngo1.address, 1n);
-      // Score after success: 110
+      // Score after success: 100 + 3 = 103 (k2-weighted reward)
 
       // Run epoch update
       await re.updateScores();
 
-      // ngo1: 110 + 42 (participation) = 152
+      // ngo1: 103 + 42 (participation: k1=70, B_i=60) = 145
       const score = await re.getValidatorScore(ngo1.address);
-      expect(score.currentScore).to.equal(152n);
+      expect(score.currentScore).to.equal(145n);
     });
 
     it("deactivated validator reactivates through good behavior + epoch", async function () {
@@ -1127,6 +1131,85 @@ describe("ReputationEngine", function () {
       // ngo1 should be removed from Besu
       expect(await besu.isValidator(ngo1.address)).to.be.false;
       expect(await besu.removeCallCount()).to.be.gte(1n);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 13. k2 phase weighting tests
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("k2 phase weighting", function () {
+    beforeEach(async function () {
+      await initializeStandardValidators();
+    });
+
+    // ── Misconduct k2 weighting per phase ──────────────────────────────────
+
+    it("should apply k2 weighting to misconduct penalty during PREPAREDNESS", async function () {
+      // PREPAREDNESS: k2=30, alphaCrisis=100
+      // base = P0 * wRole * (SCALE + alphaCrisis * 1) / SCALE² = 2*100*200/10000 = 4
+      // k2-weighted: 4 * 30 / 100 = 1
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 1n);
+    });
+
+    it("should apply k2 weighting to misconduct penalty during ACTIVE_CRISIS", async function () {
+      // ACTIVE_CRISIS: k2=60, alphaCrisis=250
+      // base = 2*100*(100+250*1)/10000 = 7
+      // k2-weighted: 7 * 60 / 100 = 4
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 4n);
+    });
+
+    it("should apply k2 weighting to misconduct penalty during RECOVERY", async function () {
+      // RECOVERY: k2=35, alphaCrisis=150
+      // base = 2*100*(100+150*1)/10000 = 2*100*250/10000 = 5
+      // k2-weighted: 5 * 35 / 100 = 1
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.RECOVERY);
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE - 1n);
+    });
+
+    // ── Reward k2 weighting per phase ──────────────────────────────────────
+
+    it("should apply k2 weighting to reward during PREPAREDNESS", async function () {
+      // PREPAREDNESS: k2=30
+      // base reward = R0 * wRole * ceilingReducer / SCALE² = 10*100*100/10000 = 10
+      // k2-weighted: 10 * 30 / 100 = 3
+      await re.connect(governance).recordSuccessfulCoordination(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 3n);
+    });
+
+    it("should apply k2 weighting to reward during ACTIVE_CRISIS", async function () {
+      // ACTIVE_CRISIS: k2=60
+      // base reward = 10, k2-weighted: 10 * 60 / 100 = 6
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
+      await re.connect(governance).recordSuccessfulCoordination(ngo1.address, 1n);
+      const score = await re.getValidatorScore(ngo1.address);
+      expect(score.currentScore).to.equal(INITIAL_SCORE + 6n);
+    });
+
+    // ── Cross-phase comparison ─────────────────────────────────────────────
+
+    it("should apply higher penalty during active crisis vs preparedness", async function () {
+      // PREPAREDNESS penalty for 1st offense: 1
+      await re.connect(governance).recordMisconduct(ngo1.address, 1n);
+      const prepScore = await re.getValidatorScore(ngo1.address);
+      const prepPenalty = INITIAL_SCORE - prepScore.currentScore;
+
+      // ACTIVE_CRISIS penalty for 1st offense on a different validator: 4
+      await re.connect(operationalAuth).setSystemPhase(SystemPhase.ACTIVE_CRISIS);
+      await re.connect(governance).recordMisconduct(ngo2.address, 1n);
+      const crisisScore = await re.getValidatorScore(ngo2.address);
+      const crisisPenalty = INITIAL_SCORE - crisisScore.currentScore;
+
+      // Active crisis penalty should be strictly greater
+      expect(crisisPenalty).to.be.gt(prepPenalty);
     });
   });
 });
