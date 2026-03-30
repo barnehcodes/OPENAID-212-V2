@@ -27,3 +27,12 @@ besu/config/qbft-config.json
 
 # Scenario test results
 scenario-results/
+
+# Internal files
+CLAUDE.md
+CONTRACT-CHANGES-REFERENCE.md
+contract-changes-reference.md
+docs/audit/
+docs/design/
+.claude/
+scenario-results/
