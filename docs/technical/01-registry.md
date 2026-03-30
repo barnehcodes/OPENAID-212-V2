@@ -117,8 +117,13 @@ flowchart TD
 - **Caller**: Tier-2 Verification Multisig (`VERIFICATION_ROLE`)
 - **Preconditions**: Address must be registered, must be Role.Beneficiary
 - **Effect**: Sets `crisisVerification[beneficiary][crisisId] = true`
-- **Scope**: Per-crisis — a beneficiary verified for crisis 1 cannot vote in crisis 2. This prevents the formation of permanent voting blocs mobilised across crises.
+- **Scope**:  Per-crisis — verification for crisis 1 does not carry over to crisis 2. Each crisis requires fresh verification. This prevents a coordinator from building a loyal group of pre-verified beneficiaries in one crisis and leveraging their votes in future elections.
 - **Events**: `BeneficiaryVerified(beneficiary, crisisId)`
+### Important clarification : What Is "Proof"?
+For NGOs, The proof is evidence that the NGO is a legitimate humanitarian organization, Via WANGO certificate, Legal incorporation documents ...., these evidance need to be verified off-chain. and  The proof bytes parameter would contain an IPFS hash (CID) pointing to a bundle of these documents
+- The Tier-2 multisig signers (1 GO + 1 NGO + 1 Community rep) independently download the documents from IPFS, verify them off-chain (check the ministry database, confirm the WANGO listing, review the activity report), and if 2-of-3 agree it's legitimate, they sign the transaction.
+
+For Beneficiaries, the proof is evidence that this person is genuinely affected by this specific crisis. This would require more in feild verification (off-chain) or documents in some case (Proof of residence..), same concept as previous the `proof `is an IPFS hash pointing to these documents. The Tier-2 multisig reviews them off-chain.
 
 ```mermaid
 sequenceDiagram
