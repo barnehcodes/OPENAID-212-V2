@@ -42,9 +42,10 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         uint256 nftId;        // Auto-incremented item identifier (starts at 1)
         address donor;        // Address that committed the item
         string  metadataURI;  // IPFS URI: item description, photos, condition, quantity
-        uint256 crisisId;     // Crisis this item is committed to
+        uint256 crisisId;     // Crisis this item is committed to (0 = direct donation)
         Status  status;       // Current lifecycle stage
         address assignedTo;   // Beneficiary assigned by coordinator (address(0) if PENDING)
+        address facility;     // GO/NGO handling logistics. address(0) for crisis-bound.
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -79,6 +80,9 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice Tracks the current owner of each in-kind item.
     ///         address(this) = held by contract (PENDING); beneficiary = after ASSIGNED.
     mapping(uint256 => address) private _nftOwners;
+
+    /// @notice Whether a crisis is currently paused (frozen escrow, no distributions).
+    mapping(uint256 => bool) public crisisPaused;
 
     /// @notice Auto-incrementing counter for in-kind item IDs. Starts at 0; first ID is 1.
     uint256 private _nftCounter;
@@ -123,11 +127,23 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice No escrow exists for this crisis (balance is zero).
     error EmptyEscrow(uint256 crisisId);
 
+    /// @notice Escrow balance is less than the requested distribution amount.
+    error InsufficientEscrow(uint256 crisisId, uint256 requested);
+
     /// @notice The requested in-kind item ID does not exist.
     error NFTNotFound(uint256 nftId);
 
     /// @notice The target address is not a registered beneficiary.
     error NotRegisteredBeneficiary(address beneficiary);
+
+    /// @notice The facility address is not a verified validator (GO/NGO).
+    error NotVerifiedValidator(address facility);
+
+    /// @notice Caller is not the designated facility for this in-kind item.
+    error NotFacility(address caller, uint256 nftId);
+
+    /// @notice The crisis is currently paused (frozen escrow, no distributions).
+    error CrisisIsPaused(uint256 crisisId);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Events
@@ -143,6 +159,10 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     event CrisisDeactivated(uint256 indexed crisisId);
     event GovernanceContractSet(address indexed governance);
     event DirectFTDonation(address indexed donor, address indexed beneficiary, uint256 amount);
+    event DirectInKindDonation(address indexed donor, address indexed facility, address indexed beneficiary, uint256 nftId);
+    event FacilityDeliveryConfirmed(uint256 indexed nftId, address indexed facility, address indexed beneficiary);
+    event CrisisPaused(uint256 indexed crisisId);
+    event CrisisUnpaused(uint256 indexed crisisId);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
@@ -221,6 +241,29 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Crisis pause/unpause — Governance only
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @inheritdoc IDonationManager
+    /// @dev Freezes escrow: stops donations and revokes coordinator authority.
+    function pauseCrisis(uint256 crisisId) external override {
+        if (msg.sender != governanceContract) revert NotGovernance(msg.sender);
+        crisisPaused[crisisId] = true;
+        activeCrises[crisisId] = false;
+        crisisCoordinator[crisisId] = address(0);
+        emit CrisisPaused(crisisId);
+    }
+
+    /// @inheritdoc IDonationManager
+    /// @dev Unfreezes escrow: reopens donations.
+    function unpauseCrisis(uint256 crisisId) external override {
+        if (msg.sender != governanceContract) revert NotGovernance(msg.sender);
+        crisisPaused[crisisId] = false;
+        activeCrises[crisisId] = true;
+        emit CrisisUnpaused(crisisId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Donations — monetary (FT)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -269,6 +312,64 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Direct donations — in-kind (three-party flow)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Create a direct (non-crisis) in-kind donation routed through a facility.
+    /// @dev    Three-party flow: Donor → Facility (verified GO/NGO) → Beneficiary.
+    ///         The facility must confirm delivery before the beneficiary can redeem.
+    /// @param facility     A verified GO or NGO handling logistics.
+    /// @param beneficiary  A registered beneficiary who will receive the item.
+    /// @param metadataURI  IPFS URI describing the physical item.
+    /// @return nftId       The ID assigned to the new in-kind donation record.
+    function directDonateInKind(
+        address facility,
+        address beneficiary,
+        string calldata metadataURI
+    ) external returns (uint256 nftId) {
+        if (!registry.getParticipant(msg.sender).exists) revert NotRegistered(msg.sender);
+        if (!registry.isVerifiedValidator(facility)) revert NotVerifiedValidator(facility);
+
+        IRegistry.Participant memory p = registry.getParticipant(beneficiary);
+        if (!p.exists || p.role != IRegistry.Role.Beneficiary) {
+            revert NotRegisteredBeneficiary(beneficiary);
+        }
+
+        nftId = ++_nftCounter;
+        _nftOwners[nftId] = address(this);
+
+        inKindDonations[nftId] = InKindDonation({
+            nftId:       nftId,
+            donor:       msg.sender,
+            metadataURI: metadataURI,
+            crisisId:    0,
+            status:      Status.PENDING,
+            assignedTo:  beneficiary,
+            facility:    facility
+        });
+
+        emit DirectInKindDonation(msg.sender, facility, beneficiary, nftId);
+    }
+
+    /// @notice Facility confirms physical delivery of a direct in-kind donation.
+    /// @dev    Transitions PENDING → ASSIGNED and transfers ownership to beneficiary.
+    ///         Only the designated facility can call this.
+    /// @param nftId  The in-kind item ID to confirm delivery for.
+    function confirmFacilityDelivery(uint256 nftId) external {
+        InKindDonation storage donation = inKindDonations[nftId];
+        if (donation.nftId == 0) revert NFTNotFound(nftId);
+        if (msg.sender != donation.facility) revert NotFacility(msg.sender, nftId);
+        if (donation.status != Status.PENDING) {
+            revert WrongNFTStatus(nftId, Status.PENDING, donation.status);
+        }
+
+        donation.status = Status.ASSIGNED;
+        _nftOwners[nftId] = donation.assignedTo;
+
+        emit FacilityDeliveryConfirmed(nftId, msg.sender, donation.assignedTo);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Donations — in-kind (custom NFT tracking)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -297,7 +398,8 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
             metadataURI: metadataURI,
             crisisId:    crisisId,
             status:      Status.PENDING,
-            assignedTo:  address(0)
+            assignedTo:  address(0),
+            facility:    address(0)
         });
 
         emit InKindDonationReceived(msg.sender, crisisId, nftId);
@@ -308,10 +410,9 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IDonationManager
-    /// @dev Transfers all FT in the crisis escrow to the elected coordinator and
-    ///      records the coordinator's address on-chain. Subsequent distribution calls
-    ///      (`distributeFTToBeneficiary`, `assignInKindToBeneficiary`) use this record
-    ///      to enforce that only the elected coordinator can distribute.
+    /// @dev Records the coordinator's address on-chain and grants distribution
+    ///      authority. Funds remain in address(this) — the coordinator never holds
+    ///      tokens. Subsequent distribution calls pull directly from escrow.
     function releaseEscrowToCoordinator(uint256 crisisId, address coordinator)
         external
         override
@@ -320,21 +421,17 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         if (coordinator == address(0)) revert ZeroAddress();
         if (crisisEscrow[crisisId] == 0) revert EmptyEscrow(crisisId);
 
-        uint256 amount = crisisEscrow[crisisId];
-        crisisEscrow[crisisId]        = 0;
-        crisisCoordinator[crisisId]   = coordinator;
-
-        _transfer(address(this), coordinator, amount);
-        emit EscrowReleased(crisisId, coordinator, amount);
+        crisisCoordinator[crisisId] = coordinator;
+        emit EscrowReleased(crisisId, coordinator, crisisEscrow[crisisId]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Distribution — elected coordinator only
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// @notice Send AID tokens from the coordinator's balance to a verified beneficiary.
-    /// @dev    Coordinator must hold sufficient AID balance (received via releaseEscrow).
-    ///         Beneficiary must be crisis-verified in the Registry for this specific crisis.
+    /// @notice Send AID tokens from the crisis escrow to a verified beneficiary.
+    /// @dev    Pulls directly from address(this) escrow balance. Coordinator has
+    ///         distribution authority but never holds the tokens.
     /// @param crisisId    The crisis under which the distribution is made.
     /// @param beneficiary The crisis-verified beneficiary receiving the funds.
     /// @param amount      Number of AID tokens to transfer (must be > 0).
@@ -343,13 +440,16 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         address beneficiary,
         uint256 amount
     ) external {
+        if (crisisPaused[crisisId]) revert CrisisIsPaused(crisisId);
         if (msg.sender != crisisCoordinator[crisisId]) revert NotCoordinator(msg.sender, crisisId);
         if (!registry.isCrisisVerifiedBeneficiary(beneficiary, crisisId)) {
             revert NotCrisisVerifiedBeneficiary(beneficiary, crisisId);
         }
         if (amount == 0) revert ZeroAmount();
+        if (amount > crisisEscrow[crisisId]) revert InsufficientEscrow(crisisId, amount);
 
-        _transfer(msg.sender, beneficiary, amount);
+        crisisEscrow[crisisId] -= amount;
+        _transfer(address(this), beneficiary, amount);
         emit FTDistributed(crisisId, msg.sender, beneficiary, amount);
     }
 
@@ -364,6 +464,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         if (donation.nftId == 0) revert NFTNotFound(nftId);
 
         uint256 crisisId = donation.crisisId;
+        if (crisisPaused[crisisId]) revert CrisisIsPaused(crisisId);
         if (msg.sender != crisisCoordinator[crisisId]) revert NotCoordinator(msg.sender, crisisId);
         if (donation.status != Status.PENDING) {
             revert WrongNFTStatus(nftId, Status.PENDING, donation.status);

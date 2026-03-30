@@ -50,6 +50,18 @@ interface IDonationManager {
     function getCrisisEscrowBalance(uint256 crisisId) external view returns (uint256);
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Crisis pause/unpause — called by Governance during misconduct flow
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Freeze a crisis: stop donations and revoke coordinator authority.
+    /// @param crisisId  The crisis to pause.
+    function pauseCrisis(uint256 crisisId) external;
+
+    /// @notice Unfreeze a crisis: reopen donations.
+    /// @param crisisId  The crisis to unpause.
+    function unpauseCrisis(uint256 crisisId) external;
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Direct donations — non-crisis path
     // ─────────────────────────────────────────────────────────────────────────
 

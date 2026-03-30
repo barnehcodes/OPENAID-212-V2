@@ -2,20 +2,18 @@
 
 ## Purpose
 
-The ReputationEngine (`contracts/ReputationEngine.sol`) is the bridge between the thesis's evolutionary game theory (EGT) analysis and the on-chain system. It translates abstract game-theoretic incentives into concrete numerical scores that determine which validators participate in Besu's QBFT consensus.
+The ReputationEngine (`contracts/ReputationEngine.sol`) maintains reputation scores for validators (GOs and NGOs) and manages Besu's QBFT validator set based on those scores.
 
 The contract:
 
 - Maintains a **reputation score** for each validator (GO or NGO)
 - Applies **quadratic penalties** for misconduct (increasing deterrent)
 - Awards **linear rewards** for honest coordination (dampened by past behavior)
-- Weights all behavioral scoring by the **current system phase** (k2)
+- Weights all scoring by the **current system phase** (k1 for participation, k2 for behavioral)
 - Manages the **Besu validator set** — adding/removing validators based on eligibility thresholds
 - Enforces a **minimum validator safety floor** (MIN_VALIDATORS = 4 for QBFT)
 
 ## The Scoring Formula
-
-The core formula from the thesis EGT analysis:
 
 ```
 R_i(n) = R_i(n-1) + k1 × B_i + k2 × C_i
@@ -24,12 +22,12 @@ R_i(n) = R_i(n-1) + k1 × B_i + k2 × C_i
 Where:
 - `R_i(n)` = validator i's score at epoch n
 - `R_i(n-1)` = previous epoch score
-- `k1` = participation weight (phase-dependent, e.g., 0.70 during preparedness)
+- `k1` = participation weight (phase-dependent, e.g., 70 during preparedness)
 - `B_i` = participation quality score (0–100)
-- `k2` = behavioral weight (phase-dependent, e.g., 0.30 during preparedness)
+- `k2` = behavioral weight (phase-dependent, e.g., 30 during preparedness)
 - `C_i` = behavioral quality score (rewards minus penalties)
 
-The k1 component (participation) is applied during the epoch-based `updateScores()` call. The k2 component (behavioral) is applied immediately when `recordMisconduct()` or `recordSuccessfulCoordination()` is called.
+**Important**: B_i and C_i are NOT computed together. B_i is batch-applied at epoch end via `updateScores()`. C_i is applied immediately transaction-by-transaction when `recordMisconduct()` or `recordSuccessfulCoordination()` is called.
 
 ## B_i — Participation Quality
 
@@ -64,7 +62,7 @@ The saturation curve prevents spam-voting from gaming the system. Early votes co
 | 10 | 83 |
 | 100 | 98 |
 
-A validator who votes once gets 33% credit. One who votes 100 times only gets 3x that. This makes it uneconomical to spam votes for marginal reputation gain.
+A validator who votes once gets 33% credit. One who votes 100 times only gets 3x that.
 
 **w_role — Role Weight:**
 
@@ -93,13 +91,9 @@ C_i represents the net effect of rewards and penalties. Unlike B_i (computed at 
 ### Penalty: `recordMisconduct()`
 
 ```
-P_penalty = P0 × w_role × (1 + α_crisis × n²) × (k2 / SCALE)
-```
-
-In Solidity:
-```solidity
-uint256 penalty = P0 * wRole * (SCALE + config.alphaCrisis * n * n) / (SCALE * SCALE);
-penalty = penalty * config.k2 / SCALE;
+penalty = P0 × w_role × (SCALE + α_crisis × n²) / (SCALE × SCALE)
+penalty = penalty × k2 / SCALE
+score -= penalty (floored at 0)
 ```
 
 Where:
@@ -147,14 +141,9 @@ This means a severe misconduct penalty can remove a validator from the consensus
 ### Reward: `recordSuccessfulCoordination()`
 
 ```
-R_reward = R0 × w_role × ceiling_reducer × (k2 / SCALE)
-```
-
-In Solidity:
-```solidity
-uint256 reward = R0 * wRole * ceilingReducer / (SCALE * SCALE);
-PhaseConfig memory config = _phaseConfigs[currentPhase];
-reward = reward * config.k2 / SCALE;
+reward = R0 × w_role × ceiling_reducer / (SCALE × SCALE)
+reward = reward × k2 / SCALE
+score += reward
 ```
 
 Where:
@@ -164,10 +153,10 @@ Where:
 #### Ceiling Reducer
 
 ```
-ceiling_reducer = 1 / (1 + β × ln(1 + n_timeout))
+ceiling_reducer = SCALE × SCALE / (SCALE + β × ln(1 + n_timeout) / SCALE)
 ```
 
-Implemented in `_calculateCeilingReducer()`. A history of timeouts (non-participation) permanently reduces future reward capacity:
+A history of timeouts (non-participation) permanently reduces future reward capacity:
 
 | Timeouts | ceiling_reducer (out of 100) | Effective Reward (NGO, k2=30) |
 |----------|----------------------------|------------------------------|
@@ -270,6 +259,14 @@ stateDiagram-v2
         Reactivation possible through good behavior
     end note
 ```
+
+## Besu Integration
+
+- `IBesuPermissioning` interface with `addValidator()` / `removeValidator()`
+- Called in `initializeValidator()`, `recordMisconduct()` (immediate deactivation), `updateScores()` (epoch eligibility)
+- All calls guarded by `if (address(besuPermissioning) != address(0))`
+- In thesis prototype: mock contract. In production: Besu's native smart contract permissioning (`--permissions-nodes-contract-enabled`)
+- No changes to consensus algorithm code (Go, Java). Uses Besu's built-in permissioning feature.
 
 ## State Variables
 

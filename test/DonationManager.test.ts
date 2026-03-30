@@ -356,6 +356,7 @@ describe("DonationManager", function () {
       expect(record.crisisId).to.equal(CRISIS_ID);
       expect(record.status).to.equal(Status.PENDING);
       expect(record.assignedTo).to.equal(ethers.ZeroAddress);
+      expect(record.facility).to.equal(ethers.ZeroAddress);
     });
 
     it("initial owner is the contract itself (held in escrow)", async function () {
@@ -392,14 +393,15 @@ describe("DonationManager", function () {
       await dm.connect(donor2).donateFT(CRISIS_ID, 200n);
     });
 
-    it("transfers all escrow funds to the coordinator", async function () {
+    it("keeps funds in contract (coordinator gets authority, not tokens)", async function () {
       await dm.connect(governance).releaseEscrowToCoordinator(CRISIS_ID, coordinator.address);
-      expect(await dm.balanceOf(coordinator.address)).to.equal(500n);
+      expect(await dm.balanceOf(coordinator.address)).to.equal(0n);
+      expect(await dm.balanceOf(dm.target)).to.equal(500n);
     });
 
-    it("resets the crisis escrow to zero after release", async function () {
+    it("escrow balance is preserved after release", async function () {
       await dm.connect(governance).releaseEscrowToCoordinator(CRISIS_ID, coordinator.address);
-      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(0n);
+      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(500n);
     });
 
     it("records the coordinator on-chain for subsequent distribution checks", async function () {
@@ -444,7 +446,9 @@ describe("DonationManager", function () {
     it("coordinator can send AID to a crisis-verified beneficiary", async function () {
       await dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 100n);
       expect(await dm.balanceOf(beneficiary1.address)).to.equal(100n);
-      expect(await dm.balanceOf(coordinator.address)).to.equal(400n);
+      // Funds come from escrow, not coordinator's balance
+      expect(await dm.balanceOf(dm.target)).to.equal(400n);
+      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(400n);
     });
 
     it("emits FTDistributed with correct args", async function () {
@@ -483,6 +487,26 @@ describe("DonationManager", function () {
         dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 0n)
       )
         .to.be.revertedWithCustomError(dm, "ZeroAmount");
+    });
+
+    it("reverts when amount exceeds remaining escrow", async function () {
+      await expect(
+        dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 501n)
+      )
+        .to.be.revertedWithCustomError(dm, "InsufficientEscrow")
+        .withArgs(CRISIS_ID, 501n);
+    });
+
+    it("deducts from crisisEscrow on each distribution", async function () {
+      await dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 200n);
+      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(300n);
+      await dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 300n);
+      expect(await dm.crisisEscrow(CRISIS_ID)).to.equal(0n);
+    });
+
+    it("coordinator balance stays zero throughout distributions", async function () {
+      await dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 100n);
+      expect(await dm.balanceOf(coordinator.address)).to.equal(0n);
     });
   });
 
@@ -655,10 +679,10 @@ describe("DonationManager", function () {
       expect(await dm.getCrisisEscrowBalance(CRISIS_ID)).to.equal(350n);
     });
 
-    it("returns zero after escrow is released", async function () {
+    it("escrow balance is preserved after release (authority model)", async function () {
       await dm.connect(donor1).donateFT(CRISIS_ID, 100n);
       await dm.connect(governance).releaseEscrowToCoordinator(CRISIS_ID, coordinator.address);
-      expect(await dm.getCrisisEscrowBalance(CRISIS_ID)).to.equal(0n);
+      expect(await dm.getCrisisEscrowBalance(CRISIS_ID)).to.equal(100n);
     });
   });
 
@@ -748,6 +772,216 @@ describe("DonationManager", function () {
     it("reverts when amount is zero", async function () {
       await expect(dm.connect(donor1).directDonateFT(beneficiary1.address, 0n))
         .to.be.revertedWithCustomError(dm, "ZeroAmount");
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // pauseCrisis / unpauseCrisis
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("pauseCrisis() / unpauseCrisis()", function () {
+    it("governance can pause a crisis", async function () {
+      await dm.connect(governance).pauseCrisis(CRISIS_ID);
+      expect(await dm.crisisPaused(CRISIS_ID)).to.be.true;
+      expect(await dm.activeCrises(CRISIS_ID)).to.be.false;
+      expect(await dm.crisisCoordinator(CRISIS_ID)).to.equal(ethers.ZeroAddress);
+    });
+
+    it("emits CrisisPaused event", async function () {
+      await expect(dm.connect(governance).pauseCrisis(CRISIS_ID))
+        .to.emit(dm, "CrisisPaused")
+        .withArgs(CRISIS_ID);
+    });
+
+    it("governance can unpause a crisis", async function () {
+      await dm.connect(governance).pauseCrisis(CRISIS_ID);
+      await dm.connect(governance).unpauseCrisis(CRISIS_ID);
+      expect(await dm.crisisPaused(CRISIS_ID)).to.be.false;
+      expect(await dm.activeCrises(CRISIS_ID)).to.be.true;
+    });
+
+    it("emits CrisisUnpaused event", async function () {
+      await dm.connect(governance).pauseCrisis(CRISIS_ID);
+      await expect(dm.connect(governance).unpauseCrisis(CRISIS_ID))
+        .to.emit(dm, "CrisisUnpaused")
+        .withArgs(CRISIS_ID);
+    });
+
+    it("reverts pauseCrisis when caller is not governance", async function () {
+      await expect(dm.connect(stranger).pauseCrisis(CRISIS_ID))
+        .to.be.revertedWithCustomError(dm, "NotGovernance")
+        .withArgs(stranger.address);
+    });
+
+    it("reverts unpauseCrisis when caller is not governance", async function () {
+      await expect(dm.connect(stranger).unpauseCrisis(CRISIS_ID))
+        .to.be.revertedWithCustomError(dm, "NotGovernance")
+        .withArgs(stranger.address);
+    });
+
+    it("distributeFTToBeneficiary reverts when crisis is paused", async function () {
+      await dm.connect(donor1).donateFT(CRISIS_ID, 500n);
+      await dm.connect(governance).releaseEscrowToCoordinator(CRISIS_ID, coordinator.address);
+      await dm.connect(governance).pauseCrisis(CRISIS_ID);
+
+      await expect(
+        dm.connect(coordinator).distributeFTToBeneficiary(CRISIS_ID, beneficiary1.address, 100n)
+      )
+        .to.be.revertedWithCustomError(dm, "CrisisIsPaused")
+        .withArgs(CRISIS_ID);
+    });
+
+    it("assignInKindToBeneficiary reverts when crisis is paused", async function () {
+      await dm.connect(donor1).donateInKind(CRISIS_ID, SAMPLE_URI);
+      await dm.connect(donor1).donateFT(CRISIS_ID, 1n);
+      await dm.connect(governance).releaseEscrowToCoordinator(CRISIS_ID, coordinator.address);
+      await dm.connect(governance).pauseCrisis(CRISIS_ID);
+
+      await expect(
+        dm.connect(coordinator).assignInKindToBeneficiary(1n, beneficiary1.address)
+      )
+        .to.be.revertedWithCustomError(dm, "CrisisIsPaused")
+        .withArgs(CRISIS_ID);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // directDonateInKind
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("directDonateInKind()", function () {
+    it("creates a direct in-kind donation with correct record", async function () {
+      await dm.connect(donor1).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI);
+      const record = await dm.getInKindDonation(1n);
+
+      expect(record.nftId).to.equal(1n);
+      expect(record.donor).to.equal(donor1.address);
+      expect(record.metadataURI).to.equal(SAMPLE_URI);
+      expect(record.crisisId).to.equal(0n);
+      expect(record.status).to.equal(Status.PENDING);
+      expect(record.assignedTo).to.equal(beneficiary1.address);
+      expect(record.facility).to.equal(coordinator.address);
+    });
+
+    it("initial owner is the contract itself", async function () {
+      await dm.connect(donor1).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI);
+      expect(await dm.nftOwnerOf(1n)).to.equal(dm.target);
+    });
+
+    it("emits DirectInKindDonation event", async function () {
+      await expect(dm.connect(donor1).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI))
+        .to.emit(dm, "DirectInKindDonation")
+        .withArgs(donor1.address, coordinator.address, beneficiary1.address, 1n);
+    });
+
+    it("returns the NFT ID", async function () {
+      const nftId = await dm.connect(donor1).directDonateInKind.staticCall(
+        coordinator.address, beneficiary1.address, SAMPLE_URI
+      );
+      expect(nftId).to.equal(1n);
+    });
+
+    it("reverts when caller is not registered", async function () {
+      await expect(
+        dm.connect(stranger).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI)
+      )
+        .to.be.revertedWithCustomError(dm, "NotRegistered")
+        .withArgs(stranger.address);
+    });
+
+    it("reverts when facility is not a verified validator", async function () {
+      await expect(
+        dm.connect(donor1).directDonateInKind(donor2.address, beneficiary1.address, SAMPLE_URI)
+      )
+        .to.be.revertedWithCustomError(dm, "NotVerifiedValidator")
+        .withArgs(donor2.address);
+    });
+
+    it("reverts when beneficiary is not registered", async function () {
+      await expect(
+        dm.connect(donor1).directDonateInKind(coordinator.address, stranger.address, SAMPLE_URI)
+      )
+        .to.be.revertedWithCustomError(dm, "NotRegisteredBeneficiary")
+        .withArgs(stranger.address);
+    });
+
+    it("reverts when beneficiary has wrong role", async function () {
+      await expect(
+        dm.connect(donor1).directDonateInKind(coordinator.address, donor2.address, SAMPLE_URI)
+      )
+        .to.be.revertedWithCustomError(dm, "NotRegisteredBeneficiary")
+        .withArgs(donor2.address);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // confirmFacilityDelivery
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("confirmFacilityDelivery()", function () {
+    beforeEach(async function () {
+      await dm.connect(donor1).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI);
+    });
+
+    it("facility can confirm delivery", async function () {
+      await dm.connect(coordinator).confirmFacilityDelivery(1n);
+      const record = await dm.getInKindDonation(1n);
+      expect(record.status).to.equal(Status.ASSIGNED);
+    });
+
+    it("transfers ownership to beneficiary", async function () {
+      await dm.connect(coordinator).confirmFacilityDelivery(1n);
+      expect(await dm.nftOwnerOf(1n)).to.equal(beneficiary1.address);
+    });
+
+    it("emits FacilityDeliveryConfirmed event", async function () {
+      await expect(dm.connect(coordinator).confirmFacilityDelivery(1n))
+        .to.emit(dm, "FacilityDeliveryConfirmed")
+        .withArgs(1n, coordinator.address, beneficiary1.address);
+    });
+
+    it("reverts when caller is not the facility", async function () {
+      await expect(dm.connect(stranger).confirmFacilityDelivery(1n))
+        .to.be.revertedWithCustomError(dm, "NotFacility")
+        .withArgs(stranger.address, 1n);
+    });
+
+    it("reverts when NFT does not exist", async function () {
+      await expect(dm.connect(coordinator).confirmFacilityDelivery(999n))
+        .to.be.revertedWithCustomError(dm, "NFTNotFound")
+        .withArgs(999n);
+    });
+
+    it("reverts when already confirmed (not PENDING)", async function () {
+      await dm.connect(coordinator).confirmFacilityDelivery(1n);
+      await expect(dm.connect(coordinator).confirmFacilityDelivery(1n))
+        .to.be.revertedWithCustomError(dm, "WrongNFTStatus")
+        .withArgs(1n, Status.PENDING, Status.ASSIGNED);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Direct in-kind three-party flow (end-to-end)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("Direct in-kind three-party flow", function () {
+    it("completes the full Donor → Facility → Beneficiary lifecycle", async function () {
+      // Step 1: Donor creates direct in-kind donation
+      await dm.connect(donor1).directDonateInKind(coordinator.address, beneficiary1.address, SAMPLE_URI);
+      let record = await dm.getInKindDonation(1n);
+      expect(record.status).to.equal(Status.PENDING);
+      expect(await dm.nftOwnerOf(1n)).to.equal(dm.target);
+
+      // Step 2: Facility confirms delivery
+      await dm.connect(coordinator).confirmFacilityDelivery(1n);
+      record = await dm.getInKindDonation(1n);
+      expect(record.status).to.equal(Status.ASSIGNED);
+      expect(await dm.nftOwnerOf(1n)).to.equal(beneficiary1.address);
+
+      // Step 3: Beneficiary confirms receipt (existing function)
+      await dm.connect(beneficiary1).confirmInKindRedemption(1n);
+      record = await dm.getInKindDonation(1n);
+      expect(record.status).to.equal(Status.REDEEMED);
     });
   });
 });

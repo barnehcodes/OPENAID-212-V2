@@ -87,9 +87,9 @@ contract Governance is IGovernance {
     /// @notice Timestamp when the voting window closes for each crisis.
     mapping(uint256 => uint256) public votingEnd;
 
-    /// @notice Prevents double-voting in coordinator elections.
-    ///         hasVoted[voter][crisisId]
-    mapping(address => mapping(uint256 => bool)) public hasVoted;
+    /// @notice Prevents double-voting in coordinator elections per round.
+    ///         hasVoted[voter][crisisId][round]
+    mapping(address => mapping(uint256 => mapping(uint256 => bool))) public hasVoted;
 
     /// @notice Prevents double-voting in misconduct reviews.
     ///         hasMisconductVoted[voter][crisisId]
@@ -97,6 +97,12 @@ contract Governance is IGovernance {
 
     /// @notice Misconduct vote tallies indexed by crisis ID.
     mapping(uint256 => MisconductTally) private _misconductTally;
+
+    /// @notice Blacklisted coordinators per crisis (banned after misconduct).
+    mapping(uint256 => mapping(address => bool)) private _blacklisted;
+
+    /// @notice Election round per crisis. Starts at 0, incremented on re-election.
+    mapping(uint256 => uint256) public electionRound;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Custom errors
@@ -166,6 +172,9 @@ contract Governance is IGovernance {
 
     /// @notice Address was not involved in this crisis and cannot vote on misconduct.
     error NotInvolvedInCrisis(address addr, uint256 crisisId);
+
+    /// @notice Address was blacklisted from this crisis (banned after misconduct).
+    error BlacklistedFromCrisis(address addr, uint256 crisisId);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
@@ -272,8 +281,11 @@ contract Governance is IGovernance {
         _requireCrisisExists(crisisId);
 
         Crisis storage crisis = _crises[crisisId];
-        if (crisis.phase != Phase.DECLARED && crisis.phase != Phase.VOTING) {
+        if (crisis.phase != Phase.DECLARED && crisis.phase != Phase.VOTING && crisis.phase != Phase.PAUSED) {
             revert WrongPhase(crisisId, crisis.phase);
+        }
+        if (_blacklisted[crisisId][msg.sender]) {
+            revert BlacklistedFromCrisis(msg.sender, crisisId);
         }
         if (!registry.isVerifiedValidator(msg.sender)) {
             revert NotVerifiedValidator(msg.sender);
@@ -320,8 +332,15 @@ contract Governance is IGovernance {
         _requireCrisisExists(crisisId);
 
         Crisis storage crisis = _crises[crisisId];
-        if (crisis.phase != Phase.DECLARED) revert WrongPhase(crisisId, crisis.phase);
+        if (crisis.phase != Phase.DECLARED && crisis.phase != Phase.PAUSED) {
+            revert WrongPhase(crisisId, crisis.phase);
+        }
         if (_candidatesList[crisisId].length == 0) revert NoCandidates(crisisId);
+
+        // Unfreeze escrow when transitioning from PAUSED → VOTING
+        if (crisis.phase == Phase.PAUSED) {
+            donationManager.unpauseCrisis(crisisId);
+        }
 
         crisis.phase         = Phase.VOTING;
         votingStart[crisisId] = block.timestamp;
@@ -347,7 +366,8 @@ contract Governance is IGovernance {
         Crisis storage crisis = _crises[crisisId];
         if (crisis.phase != Phase.VOTING)              revert WrongPhase(crisisId, crisis.phase);
         if (block.timestamp > votingEnd[crisisId])     revert VotingClosed(crisisId);
-        if (hasVoted[msg.sender][crisisId])            revert AlreadyVoted(msg.sender, crisisId);
+        uint256 round = electionRound[crisisId];
+        if (hasVoted[msg.sender][crisisId][round])     revert AlreadyVoted(msg.sender, crisisId);
         if (_candidateIndexPlusOne[crisisId][candidate] == 0) {
             revert NotACandidate(candidate, crisisId);
         }
@@ -380,7 +400,7 @@ contract Governance is IGovernance {
             _candidatesList[crisisId][idx].voteCount += 1;
         }
 
-        hasVoted[msg.sender][crisisId] = true;
+        hasVoted[msg.sender][crisisId][round] = true;
 
         // Emit before external call (checks-effects-interactions)
         emit VoteCast(crisisId, msg.sender, candidate);
@@ -514,7 +534,11 @@ contract Governance is IGovernance {
             voteEnd:      end
         });
 
+        // Emit before external call (checks-effects-interactions)
         emit MisconductVoteStarted(crisisId, start, end);
+
+        // Freeze escrow immediately on REVIEW entry
+        donationManager.pauseCrisis(crisisId);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -567,14 +591,42 @@ contract Governance is IGovernance {
         uint256 totalVotes        = tally.votesFor + tally.votesAgainst;
         bool    misconductConfirmed = (totalVotes > 0) && (tally.votesFor > totalVotes / 2);
 
-        // Effects before interactions
-        crisis.phase = Phase.CLOSED;
-
-        // Emit before external call (checks-effects-interactions)
+        // Emit before external calls (checks-effects-interactions)
         emit MisconductVoteFinalized(crisisId, misconductConfirmed, tally.votesFor, tally.votesAgainst);
 
-        if (misconductConfirmed && address(reputationEngine) != address(0)) {
-            reputationEngine.recordMisconduct(crisis.coordinator, crisisId);
+        if (misconductConfirmed) {
+            // Slash reputation
+            if (address(reputationEngine) != address(0)) {
+                reputationEngine.recordMisconduct(crisis.coordinator, crisisId);
+            }
+
+            // Ban old coordinator from this crisis
+            _blacklisted[crisisId][crisis.coordinator] = true;
+            emit CrisisPaused(crisisId, crisis.coordinator);
+
+            // Strip authority
+            crisis.coordinator = address(0);
+            crisis.phase = Phase.PAUSED;
+            crisis.misconductFlagged = false;
+
+            // Clear old candidates
+            delete _candidatesList[crisisId];
+
+            // Reset voting round
+            electionRound[crisisId] += 1;
+            delete votingStart[crisisId];
+            delete votingEnd[crisisId];
+
+            // Escrow already frozen from initiateMisconductVote
+        } else {
+            // Coordinator vindicated — resume
+            crisis.phase = Phase.ACTIVE;
+            crisis.misconductFlagged = false;
+
+            // Unfreeze escrow
+            donationManager.unpauseCrisis(crisisId);
+
+            emit MisconductDismissed(crisisId);
         }
     }
 

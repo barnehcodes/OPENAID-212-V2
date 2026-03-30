@@ -5,10 +5,11 @@
 The DonationManager (`contracts/DonationManager.sol`) handles all asset flows in OpenAID +212. It is responsible for:
 
 - Minting and managing the **AID ERC20 token** (1 AID = 1 MAD)
-- Holding **crisis-bound escrow** until a coordinator is elected
+- Holding **crisis-bound escrow** and granting **distribution authority** to coordinators
 - Tracking **in-kind donations** through a custom NFT-like lifecycle
-- Enabling **direct non-crisis donations** from donors to beneficiaries
+- Enabling **direct non-crisis donations** (FT and in-kind) from donors to beneficiaries
 - Enforcing the **three-way verification flow** (donor → coordinator → beneficiary)
+- Supporting **escrow freeze/unfreeze** during misconduct investigations
 
 ## Contract Inheritance
 
@@ -53,14 +54,23 @@ The `decimals()` function returns `0`, consistent with the system's integer-only
 - **Preconditions**: Beneficiary must be a registered Beneficiary (checked via Registry)
 - **Events**: `DirectFTDonation(donor, beneficiary, amount)`
 
-### 3. In-Kind Donations: `donateInKind(uint256 crisisId, string calldata metadataURI)`
+### 3. Crisis-Bound In-Kind Donations: `donateInKind(uint256 crisisId, string calldata metadataURI)`
 
 - **Caller**: Any registered participant
 - **Flow**: Creates an `InKindDonation` record with auto-incremented ID (starting at 1)
 - **Metadata**: `metadataURI` should point to an IPFS document describing the physical item (type, condition, quantity, photos)
 - **Ownership**: Contract holds the item (`_nftOwners[nftId] = address(this)`)
-- **Status**: Starts as `PENDING`
+- **Status**: Starts as `PENDING`, `facility` set to `address(0)` (crisis-bound)
 - **Returns**: The assigned `nftId`
+
+### 4. Direct In-Kind Donations: `directDonateInKind(address facility, address beneficiary, string calldata metadataURI)`
+
+- **Caller**: Any registered participant
+- **Flow**: Creates an `InKindDonation` record routed through a verified facility (GO/NGO)
+- **Three-party flow**: Donor → Facility confirms delivery → Beneficiary confirms receipt
+- **No crisis required** — `crisisId` is set to 0
+- **Preconditions**: Facility must be a verified validator, beneficiary must be a registered Beneficiary
+- **Events**: `DirectInKindDonation(donor, facility, beneficiary, nftId)`
 
 #### Why Not ERC721?
 
@@ -75,11 +85,14 @@ struct InKindDonation {
     uint256 nftId;        // Auto-incremented item ID (starts at 1)
     address donor;        // Address that committed the item
     string  metadataURI;  // IPFS URI: item description, photos, condition
-    uint256 crisisId;     // Crisis this item is committed to
+    uint256 crisisId;     // Crisis this item is committed to (0 = direct donation)
     Status  status;       // Current lifecycle stage
     address assignedTo;   // Beneficiary assigned by coordinator
+    address facility;     // GO/NGO handling logistics (address(0) for crisis-bound)
 }
 ```
+
+### Crisis-Bound Path
 
 ```mermaid
 stateDiagram-v2
@@ -104,76 +117,94 @@ stateDiagram-v2
     end note
 ```
 
-| Transition | Called By | Preconditions |
-|-----------|----------|---------------|
-| PENDING → ASSIGNED | Elected coordinator (`crisisCoordinator[crisisId]`) | Item exists, status == PENDING, beneficiary is crisis-verified |
-| ASSIGNED → REDEEMED | Assigned beneficiary (`donation.assignedTo`) | Item exists, status == ASSIGNED, caller == assignedTo |
-
-## Three-Way Verification Flow
-
-The three-way verification flow creates an accountability chain for every donation:
+### Direct In-Kind Path (Three-Party Flow)
 
 ```mermaid
-sequenceDiagram
-    participant Donor
-    participant DM as DonationManager
-    participant GOV as Governance
-    participant Coord as Coordinator
-    participant Ben as Beneficiary
+stateDiagram-v2
+    [*] --> PENDING: directDonateInKind()
+    PENDING --> ASSIGNED: confirmFacilityDelivery()
+    ASSIGNED --> REDEEMED: confirmInKindRedemption()
+    REDEEMED --> [*]
 
-    Note over Donor,Ben: Step 1: Donor commits funds
-    Donor->>DM: donateFT(crisisId, amount)
-    DM->>DM: _mint(address(this), amount)
-    Note over DM: Funds held in escrow
+    note right of PENDING
+        Owner: contract (address(this))
+        Donor designates facility + beneficiary
+    end note
 
-    Note over GOV: Election finalizes...
-    GOV->>DM: releaseEscrowToCoordinator(crisisId, winner)
-    DM->>DM: _transfer(address(this), coordinator, amount)
-    Note over DM: Coordinator holds funds
+    note right of ASSIGNED
+        Owner: beneficiary
+        Facility confirms physical delivery
+    end note
 
-    Note over Coord,Ben: Step 2: Coordinator distributes
-    Coord->>DM: distributeFTToBeneficiary(crisisId, ben, amount)
-    DM->>DM: _transfer(coordinator, beneficiary, amount)
-    Note over DM: Beneficiary receives funds
-
-    Note over Donor,Ben: In-Kind Path
-    Donor->>DM: donateInKind(crisisId, metadataURI)
-    Note over DM: Item record created (PENDING)
-    Coord->>DM: assignInKindToBeneficiary(nftId, ben)
-    Note over DM: Status → ASSIGNED
-    Ben->>DM: confirmInKindRedemption(nftId)
-    Note over DM: Status → REDEEMED
+    note right of REDEEMED
+        Owner: beneficiary
+        Beneficiary confirms receipt
+    end note
 ```
 
-### FT Donation Flow (Detailed)
+| Step | Crisis-Bound Path | Direct Path |
+|------|------------------|-------------|
+| 1 | Donor: `donateInKind()` | Donor: `directDonateInKind(facility, beneficiary, uri)` |
+| 2 | Coordinator: `assignInKindToBeneficiary()` | Facility: `confirmFacilityDelivery()` |
+| 3 | Beneficiary: `confirmInKindRedemption()` | Beneficiary: `confirmInKindRedemption()` |
+
+## Escrow Authority Model
+
+The coordinator **never holds funds**. This is a key security property:
+
+### `releaseEscrowToCoordinator(uint256 crisisId, address coordinator)`
+
+- **Caller**: Governance contract only
+- **Flow**: Records coordinator address, **does NOT transfer tokens**
+- **Side effects**:
+  - Sets `crisisCoordinator[crisisId] = coordinator` (enables distribution calls)
+  - Escrow balance is **NOT zeroed** — funds remain in `address(this)`
+- **Preconditions**: Coordinator not zero, escrow not empty
+
+### `distributeFTToBeneficiary(uint256 crisisId, address beneficiary, uint256 amount)`
+
+- **Caller**: Elected coordinator only (`msg.sender == crisisCoordinator[crisisId]`)
+- **Flow**: Transfers AID from **contract escrow** (`address(this)`) to the beneficiary
+- **State updates**: `crisisEscrow[crisisId] -= amount`
+- **Preconditions**: Crisis not paused, beneficiary is crisis-verified, amount > 0, sufficient escrow balance
+
+### FT Donation Flow
 
 ```mermaid
 flowchart LR
     DONOR["Donor<br/>donateFT()"] -->|mint AID| ESCROW["Crisis Escrow<br/>address(this)"]
-    ESCROW -->|releaseEscrowToCoordinator()| COORD["Coordinator<br/>elected winner"]
-    COORD -->|distributeFTToBeneficiary()| BEN["Beneficiary<br/>crisis-verified"]
+    ESCROW -->|distributeFTToBeneficiary()| BEN["Beneficiary<br/>crisis-verified"]
+    COORD["Coordinator<br/>(authority only)"] -.->|authorizes| ESCROW
 
     style ESCROW fill:#fff3e0,stroke:#e65100
     style COORD fill:#f3e5f5,stroke:#4a148c
     style BEN fill:#c8e6c9,stroke:#1b5e20
 ```
 
-## Escrow Management
+## Crisis Pause/Unpause
 
-### `releaseEscrowToCoordinator(uint256 crisisId, address coordinator)`
+When a misconduct investigation begins or misconduct is confirmed, the escrow is frozen:
+
+### `pauseCrisis(uint256 crisisId)`
 
 - **Caller**: Governance contract only
-- **Flow**: Transfers all AID in `crisisEscrow[crisisId]` to the coordinator
-- **Side effects**:
-  - Sets `crisisCoordinator[crisisId] = coordinator` (enables distribution calls)
-  - Zeros out `crisisEscrow[crisisId]`
-- **Preconditions**: Coordinator not zero, escrow not empty
+- **Effects**:
+  - `crisisPaused[crisisId] = true`
+  - `activeCrises[crisisId] = false` (stops new donations)
+  - `crisisCoordinator[crisisId] = address(0)` (revokes distribution authority)
+- **Events**: `CrisisPaused(crisisId)`
 
-### `distributeFTToBeneficiary(uint256 crisisId, address beneficiary, uint256 amount)`
+### `unpauseCrisis(uint256 crisisId)`
 
-- **Caller**: Elected coordinator only (`msg.sender == crisisCoordinator[crisisId]`)
-- **Flow**: Transfers AID from coordinator's balance to the beneficiary
-- **Preconditions**: Beneficiary is crisis-verified via Registry, amount > 0
+- **Caller**: Governance contract only
+- **Effects**:
+  - `crisisPaused[crisisId] = false`
+  - `activeCrises[crisisId] = true` (reopens donations)
+- **Events**: `CrisisUnpaused(crisisId)`
+
+### Pause Checks
+
+Both `distributeFTToBeneficiary()` and `assignInKindToBeneficiary()` check `crisisPaused[crisisId]` and revert with `CrisisIsPaused` if true. This ensures no distributions occur during an investigation or while the crisis is paused for re-election.
 
 ## Crisis Lifecycle Integration
 
@@ -183,6 +214,8 @@ The DonationManager tracks crisis activation state via the `activeCrises` mappin
 |----------|----------|--------|
 | `activateCrisis(crisisId)` | Governance (on `declareCrisis()`) | Opens donations for this crisis |
 | `deactivateCrisis(crisisId)` | Governance (on `finalizeElection()`) | Closes donations — coordinator now distributes |
+| `pauseCrisis(crisisId)` | Governance (on `initiateMisconductVote()` or `finalizeMisconductVote()` confirmed) | Freezes escrow, stops donations, revokes coordinator |
+| `unpauseCrisis(crisisId)` | Governance (on `finalizeMisconductVote()` dismissed or `startVoting()` from PAUSED) | Unfreezes escrow, reopens donations |
 
 ## State Variables
 
@@ -194,6 +227,7 @@ The DonationManager tracks crisis activation state via the `activeCrises` mappin
 | `crisisEscrow` | `mapping(uint256 => uint256)` | AID held in escrow per crisis |
 | `donorContribution` | `mapping(address => mapping(uint256 => uint256))` | Per-donor per-crisis donation total |
 | `crisisCoordinator` | `mapping(uint256 => address)` | Elected coordinator per crisis |
+| `crisisPaused` | `mapping(uint256 => bool)` | Whether a crisis is frozen |
 | `inKindDonations` | `mapping(uint256 => InKindDonation)` | In-kind donation records |
 | `_nftOwners` | `mapping(uint256 => address)` | Current holder of each in-kind item |
 | `_nftCounter` | `uint256` | Auto-incrementing item ID counter |
@@ -224,5 +258,9 @@ The DonationManager tracks crisis activation state via the `activeCrises` mappin
 | `NotCrisisVerifiedBeneficiary(beneficiary, crisisId)` | Beneficiary not verified for this crisis |
 | `ZeroAddress()` | Zero address in constructor or setGovernanceContract |
 | `EmptyEscrow(crisisId)` | Releasing escrow with zero balance |
+| `InsufficientEscrow(crisisId, requested)` | Distribution amount exceeds remaining escrow |
 | `NFTNotFound(nftId)` | Nonexistent in-kind item ID |
-| `NotRegisteredBeneficiary(beneficiary)` | `directDonateFT` to non-beneficiary |
+| `NotRegisteredBeneficiary(beneficiary)` | Direct donation to non-beneficiary |
+| `NotVerifiedValidator(facility)` | Facility is not a verified GO/NGO |
+| `NotFacility(caller, nftId)` | Caller is not the designated facility |
+| `CrisisIsPaused(crisisId)` | Distribution during frozen crisis |

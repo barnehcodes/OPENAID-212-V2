@@ -21,7 +21,7 @@ The system is composed of four contracts deployed in strict order, each building
 |-------|----------|---------|-------------|
 | 1 | **Registry** | Identity layer — roles, verification, authority management | None |
 | 2 | **DonationManager** | Financial engine — ERC20 token, escrow, distribution | Registry |
-| 3 | **Governance** | Democratic engine — crisis lifecycle, elections, misconduct | Registry, DonationManager |
+| 3 | **Governance** | Democratic engine — crisis lifecycle, elections, misconduct, re-election | Registry, DonationManager |
 | 4 | **ReputationEngine** | Scoring engine — validator reputation, Besu permissioning | Registry, Governance |
 
 ### Contract Dependency Graph
@@ -38,7 +38,7 @@ graph TD
     RE -->|called by| GOV
     RE -->|manages validators| BESU
     GOV -->|reads roles, authorities| REG
-    GOV -->|activates/deactivates crises<br/>releases escrow| DM
+    GOV -->|activates/deactivates crises<br/>releases escrow<br/>pause/unpause| DM
     GOV -->|records misconduct/success| RE
     DM -->|reads roles, verification| REG
 
@@ -72,6 +72,52 @@ sequenceDiagram
 ```
 
 The circular dependency between Governance and ReputationEngine (Governance calls RE for scoring; RE requires Governance as its caller) is broken by deploying with `address(0)` placeholders and wiring up post-deployment.
+
+## Crisis Lifecycle Overview
+
+Every crisis follows a phase progression with multiple possible paths, including a re-election cycle after misconduct:
+
+```mermaid
+stateDiagram-v2
+    [*] --> DECLARED: declareCrisis()
+    DECLARED --> VOTING: startVoting()
+    VOTING --> ACTIVE: finalizeElection()
+
+    ACTIVE --> CLOSED: closeCrisis() [clean path]
+    ACTIVE --> REVIEW: initiateMisconductVote()
+
+    REVIEW --> ACTIVE: finalizeMisconductVote() [dismissed]
+    REVIEW --> PAUSED: finalizeMisconductVote() [confirmed]
+
+    PAUSED --> VOTING: startVoting() [re-election]
+
+    CLOSED --> [*]
+
+    note right of PAUSED
+        Old coordinator banned
+        Escrow frozen
+        Candidates register for re-election
+    end note
+```
+
+### Escrow-Phase Link
+
+| Crisis Phase | Escrow State | Donations | Distributions |
+|---|---|---|---|
+| DECLARED | Open | Yes | No (no coordinator) |
+| VOTING | Open | Yes | No (no coordinator) |
+| ACTIVE | Sealed | No | Yes (coordinator distributes from escrow) |
+| REVIEW | Frozen | No | No (under investigation) |
+| PAUSED | Frozen | No | No (awaiting re-election) |
+| VOTING (re-election) | Open | Yes | No |
+| ACTIVE (new coordinator) | Sealed | No | Yes |
+| CLOSED | Closed | No | No |
+
+## Escrow Authority Model
+
+The coordinator **never holds funds**. When a coordinator is elected, `releaseEscrowToCoordinator()` records the coordinator's address as having distribution authority, but the AID tokens remain in the DonationManager contract (`address(this)`). Distribution calls (`distributeFTToBeneficiary()`) transfer tokens directly from the contract's escrow to the beneficiary, deducting from `crisisEscrow[crisisId]`.
+
+This prevents a misbehaving coordinator from taking funds. If misconduct is confirmed, the coordinator is banned and loses distribution authority — but the funds are still in escrow and available for the next coordinator.
 
 ## Three-Tier Authority Model
 
@@ -108,7 +154,7 @@ Tier 3 can update any authority address (including itself) via `updateOperationa
 | **Identity** | Role assignment, verification status, authority addresses | WANGO proof validation, KYC checks, physical identity verification |
 | **Donations** | ERC20 minting, escrow hold/release, in-kind record tracking | Physical item logistics, IPFS metadata upload, MAD→AID conversion |
 | **Governance** | Crisis declaration, candidate registration, voting, election finalization | Multisig signer coordination (Gnosis Safe), off-chain deliberation |
-| **Misconduct** | Misconduct vote initiation/finalization, reputation slashing | Evidence gathering, investigation, Tier-3 deliberation |
+| **Misconduct** | Misconduct vote initiation/finalization, reputation slashing, escrow freeze | Evidence gathering, investigation, Tier-3 deliberation |
 | **Reputation** | Score calculation, validator activation/deactivation | Epoch trigger (cron script calls `updateScores()`), participation monitoring |
 | **Consensus** | Besu QBFT block production, validator set via permissioning contract | Node infrastructure, Docker networking, Prometheus/Grafana monitoring |
 
@@ -120,6 +166,8 @@ The social layer (multisig signers, cron jobs, IPFS, monitoring) handles everyth
 |----------|--------|-----------|
 | **ERC20 inside DonationManager** | AID token (`OpenAID Donation Token`) is inherited via `ERC20`, not a separate contract | Avoids a separate deployment + approval flow; escrow is just holding tokens in `address(this)` |
 | **In-kind tracking: custom struct, NOT ERC721** | `InKindDonation` struct with `Status` enum and manual `_nftOwners` mapping | Inheriting both ERC20 and ERC721 from OpenZeppelin v5 causes a `_transfer(address,address,uint256)` signature collision. Custom tracking avoids this while providing the same lifecycle guarantees |
+| **Escrow authority model** | Coordinator gets distribution authority, not fund custody | Prevents misbehaving coordinators from absconding with funds; tokens remain in contract escrow |
+| **PAUSED state with re-election** | Misconduct confirmation → PAUSED (not CLOSED); banned coordinator, re-election cycle | Remaining escrow is preserved for a new coordinator; crisis doesn't die from one bad actor |
 | **Tiered multisig authority** | Three tiers with different thresholds (1-of-1, 2-of-3, 4-of-7) | No single actor class can unilaterally take system-critical actions; low-risk actions remain fast |
 | **GO Vote Compression** | If all GOs vote unanimously → compress to 1 vote; if split → normal counting | Prevents government bloc from capturing coordinator elections while preserving their voice when split |
 | **Integer math scaled by 100** | All percentages/weights use `uint256` with `SCALE = 100` | Solidity has no floating point; scaling by 100 gives two decimal places of precision with simple integer division |
@@ -128,3 +176,4 @@ The social layer (multisig signers, cron jobs, IPFS, monitoring) handles everyth
 | **0 decimals on AID token** | `decimals() returns 0` | 1 AID = 1 MAD (Moroccan Dirham); whole units only, consistent with integer-only math |
 | **Permissionless `updateScores()`** | Anyone can call it (gated only by epoch guard) | Removes trust dependency on any single entity for epoch progression; cron script is a convenience, not a requirement |
 | **Per-crisis beneficiary verification** | `crisisVerification[beneficiary][crisisId]` | Prevents permanent voting blocs — a beneficiary verified for crisis A cannot vote in crisis B |
+| **Direct in-kind donations** | Three-party flow (Donor → Facility → Beneficiary) for non-crisis in-kind donations | Mirrors directDonateFT for tokens; facility (verified GO/NGO) handles logistics |

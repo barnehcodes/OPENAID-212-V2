@@ -20,7 +20,8 @@ enum Phase {
   VOTING   = 1,
   ACTIVE   = 2,
   REVIEW   = 3,
-  CLOSED   = 4,
+  PAUSED   = 4,
+  CLOSED   = 5,
 }
 
 const EMPTY_PROOF         = "0x";
@@ -469,7 +470,7 @@ describe("Governance", function () {
       const candidates = await governance.getCandidates(crisisId);
       const ngo1Entry = candidates.find((c) => c.candidate === ngo1.address)!;
       expect(ngo1Entry.voteCount).to.equal(1n);
-      expect(await governance.hasVoted(donor1.address, crisisId)).to.be.true;
+      expect(await governance.hasVoted(donor1.address, crisisId, 0n)).to.be.true;
     });
 
     it("crisis-verified beneficiary can vote without donation", async function () {
@@ -593,16 +594,16 @@ describe("Governance", function () {
       expect(crisis.coordinator).to.equal(ngo1.address);
     });
 
-    it("releases escrow to elected coordinator", async function () {
+    it("grants coordinator authority over escrow (funds stay in contract)", async function () {
       await governance.connect(donor1).castVote(crisisId, ngo1.address);
       await mineTime(VOTING_DURATION + 1);
       await governance.finalizeElection(crisisId);
 
-      // ngo1 should hold the AID tokens
+      // Coordinator gets authority, not funds — balance stays 0
       const ngo1Balance = await dm.balanceOf(ngo1.address);
       const escrowLeft  = await dm.getCrisisEscrowBalance(crisisId);
-      expect(ngo1Balance).to.be.gt(0n);
-      expect(escrowLeft).to.equal(0n);
+      expect(ngo1Balance).to.equal(0n);
+      expect(escrowLeft).to.be.gt(0n);
     });
 
     it("first registered candidate wins a tie", async function () {
@@ -870,7 +871,7 @@ describe("Governance", function () {
         .withArgs(crisisId);
     });
 
-    it("misconduct confirmed → ReputationEngine.recordMisconduct called", async function () {
+    it("misconduct confirmed → PAUSED, coordinator banned, reputation slashed", async function () {
       // 2 votes for, 1 against → majority (2/3 > 0.5)
       await governance.connect(go1).castMisconductVote(crisisId, true);
       await governance.connect(go2).castMisconductVote(crisisId, true);
@@ -882,13 +883,17 @@ describe("Governance", function () {
         .withArgs(crisisId, true, 2n, 1n);
 
       const crisis = await governance.getCrisis(crisisId);
-      expect(crisis.phase).to.equal(Phase.CLOSED);
+      expect(crisis.phase).to.equal(Phase.PAUSED);
+      expect(crisis.coordinator).to.equal(ethers.ZeroAddress);
+      expect(crisis.misconductFlagged).to.be.false;
       expect(await mockRepEng.misconductCallCount()).to.equal(1n);
       expect(await mockRepEng.lastMisconductValidator()).to.equal(coordinator);
       expect(await mockRepEng.lastMisconductCrisisId()).to.equal(crisisId);
+      // Election round incremented
+      expect(await governance.electionRound(crisisId)).to.equal(1n);
     });
 
-    it("misconduct not confirmed → no slashing, crisis closed", async function () {
+    it("misconduct not confirmed → ACTIVE, coordinator vindicated", async function () {
       // 1 vote for, 2 against → no majority
       await governance.connect(go1).castMisconductVote(crisisId, true);
       await governance.connect(go2).castMisconductVote(crisisId, false);
@@ -901,7 +906,8 @@ describe("Governance", function () {
 
       expect(await mockRepEng.misconductCallCount()).to.equal(0n);
       const crisis = await governance.getCrisis(crisisId);
-      expect(crisis.phase).to.equal(Phase.CLOSED);
+      expect(crisis.phase).to.equal(Phase.ACTIVE);
+      expect(crisis.misconductFlagged).to.be.false;
     });
 
     it("no votes cast → misconduct not confirmed (benefit of the doubt)", async function () {
@@ -1050,7 +1056,7 @@ describe("Governance", function () {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("Full lifecycle", function () {
-    it("DECLARED → VOTING → ACTIVE → REVIEW → CLOSED (misconduct path)", async function () {
+    it("DECLARED → VOTING → ACTIVE → REVIEW → PAUSED (misconduct path)", async function () {
       // 1. Declare
       const crisisId = await declareCrisis();
       expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.DECLARED);
@@ -1072,11 +1078,11 @@ describe("Governance", function () {
       await governance.connect(crisisMS).initiateMisconductVote(crisisId);
       expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.REVIEW);
 
-      // 5. Vote on misconduct (majority confirms)
+      // 5. Vote on misconduct (majority confirms) → PAUSED
       await governance.connect(go1).castMisconductVote(crisisId, true);
       await mineTime(MISCONDUCT_DURATION + 1);
       await governance.finalizeMisconductVote(crisisId);
-      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.CLOSED);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.PAUSED);
       expect(await mockRepEng.misconductCallCount()).to.equal(1n);
     });
 
@@ -1091,6 +1097,169 @@ describe("Governance", function () {
       await governance.connect(operationalAuth).closeCrisis(crisisId);
       expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.CLOSED);
       expect(await mockRepEng.successCallCount()).to.equal(1n);
+    });
+
+    it("Full re-election cycle: ACTIVE → REVIEW → PAUSED → VOTING → ACTIVE → CLOSED", async function () {
+      // 1. Declare + get to ACTIVE with ngo1 as coordinator
+      const crisisId = await declareCrisis();
+      await dm.connect(go1).donateFT(crisisId, GO_REQUIRED);
+      await dm.connect(ngo1).donateFT(crisisId, NGO_REQUIRED);
+      await dm.connect(ngo2).donateFT(crisisId, NGO_REQUIRED);
+      await governance.connect(ngo1).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      await governance.connect(go1).castVote(crisisId, ngo1.address);
+      await mineTime(VOTING_DURATION + 1);
+      await governance.finalizeElection(crisisId);
+      expect((await governance.getCrisis(crisisId)).coordinator).to.equal(ngo1.address);
+
+      // 2. Misconduct → PAUSED
+      await governance.connect(crisisMS).initiateMisconductVote(crisisId);
+      await governance.connect(go1).castMisconductVote(crisisId, true);
+      await mineTime(MISCONDUCT_DURATION + 1);
+      await governance.finalizeMisconductVote(crisisId);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.PAUSED);
+
+      // 3. ngo1 is blacklisted — cannot re-register
+      await expect(governance.connect(ngo1).registerAsCandidate(crisisId))
+        .to.be.revertedWithCustomError(governance, "BlacklistedFromCrisis");
+
+      // 4. ngo2 registers and triggers re-election
+      await governance.connect(ngo2).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.VOTING);
+
+      // 5. go1 can vote again in the new round
+      await governance.connect(go1).castVote(crisisId, ngo2.address);
+      expect(await governance.hasVoted(go1.address, crisisId, 1n)).to.be.true;
+      // Still shows true for round 0 too
+      expect(await governance.hasVoted(go1.address, crisisId, 0n)).to.be.true;
+
+      // 6. Finalize re-election
+      await mineTime(VOTING_DURATION + 1);
+      await governance.finalizeElection(crisisId);
+      expect((await governance.getCrisis(crisisId)).coordinator).to.equal(ngo2.address);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.ACTIVE);
+
+      // 7. Clean close
+      await governance.connect(operationalAuth).closeCrisis(crisisId);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.CLOSED);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 12. PAUSED state + Re-election cycle
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe("PAUSED state and re-election", function () {
+    let crisisId: bigint;
+
+    beforeEach(async function () {
+      crisisId = await declareCrisis();
+      await dm.connect(go1).donateFT(crisisId, GO_REQUIRED);
+      await dm.connect(ngo1).donateFT(crisisId, NGO_REQUIRED);
+      await dm.connect(ngo2).donateFT(crisisId, NGO_REQUIRED);
+      await dm.connect(donor1).donateFT(crisisId, DONOR_REQUIRED);
+      await governance.connect(ngo1).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      await governance.connect(donor1).castVote(crisisId, ngo1.address);
+      await mineTime(VOTING_DURATION + 1);
+      await governance.finalizeElection(crisisId);
+      // ngo1 is coordinator
+      await governance.connect(crisisMS).initiateMisconductVote(crisisId);
+      await governance.connect(go1).castMisconductVote(crisisId, true);
+      await mineTime(MISCONDUCT_DURATION + 1);
+      await governance.finalizeMisconductVote(crisisId);
+      // Now in PAUSED state
+    });
+
+    it("crisis is in PAUSED phase after misconduct confirmation", async function () {
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.PAUSED);
+    });
+
+    it("old coordinator is address(0)", async function () {
+      expect((await governance.getCrisis(crisisId)).coordinator).to.equal(ethers.ZeroAddress);
+    });
+
+    it("election round is incremented", async function () {
+      expect(await governance.electionRound(crisisId)).to.equal(1n);
+    });
+
+    it("candidates list is cleared", async function () {
+      const candidates = await governance.getCandidates(crisisId);
+      expect(candidates.length).to.equal(0);
+    });
+
+    it("blacklisted coordinator cannot register", async function () {
+      await expect(governance.connect(ngo1).registerAsCandidate(crisisId))
+        .to.be.revertedWithCustomError(governance, "BlacklistedFromCrisis")
+        .withArgs(ngo1.address, crisisId);
+    });
+
+    it("non-blacklisted NGO can register during PAUSED", async function () {
+      await governance.connect(ngo2).registerAsCandidate(crisisId);
+      const candidates = await governance.getCandidates(crisisId);
+      expect(candidates.length).to.equal(1);
+      expect(candidates[0].candidate).to.equal(ngo2.address);
+    });
+
+    it("startVoting works from PAUSED", async function () {
+      await governance.connect(ngo2).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      expect((await governance.getCrisis(crisisId)).phase).to.equal(Phase.VOTING);
+    });
+
+    it("voters can vote again in new round", async function () {
+      await governance.connect(ngo2).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      // donor1 voted in round 0, can vote again in round 1
+      await governance.connect(donor1).castVote(crisisId, ngo2.address);
+      expect(await governance.hasVoted(donor1.address, crisisId, 1n)).to.be.true;
+    });
+
+    it("escrow is frozen during PAUSED", async function () {
+      expect(await dm.crisisPaused(crisisId)).to.be.true;
+    });
+
+    it("escrow unfreezes when startVoting from PAUSED", async function () {
+      await governance.connect(ngo2).registerAsCandidate(crisisId);
+      await governance.connect(operationalAuth).startVoting(crisisId);
+      expect(await dm.crisisPaused(crisisId)).to.be.false;
+      expect(await dm.activeCrises(crisisId)).to.be.true;
+    });
+
+    it("misconduct dismissed → ACTIVE, escrow unfreezes", async function () {
+      // Create a fresh crisis for the dismiss test
+      const crisisId2 = await declareCrisis();
+      await dm.connect(ngo1).donateFT(crisisId2, NGO_REQUIRED);
+      await dm.connect(donor1).donateFT(crisisId2, DONOR_REQUIRED);
+      await governance.connect(ngo1).registerAsCandidate(crisisId2);
+      await governance.connect(operationalAuth).startVoting(crisisId2);
+      await governance.connect(donor1).castVote(crisisId2, ngo1.address);
+      await mineTime(VOTING_DURATION + 1);
+      await governance.finalizeElection(crisisId2);
+      await governance.connect(crisisMS).initiateMisconductVote(crisisId2);
+
+      // Vote dismiss
+      await governance.connect(go1).castMisconductVote(crisisId2, false);
+      await mineTime(MISCONDUCT_DURATION + 1);
+      await governance.finalizeMisconductVote(crisisId2);
+
+      expect((await governance.getCrisis(crisisId2)).phase).to.equal(Phase.ACTIVE);
+      expect(await dm.crisisPaused(crisisId2)).to.be.false;
+    });
+
+    it("initiateMisconductVote freezes escrow immediately", async function () {
+      // Use a new crisis to test the freeze on REVIEW entry
+      const crisisId2 = await declareCrisis();
+      await dm.connect(ngo1).donateFT(crisisId2, NGO_REQUIRED);
+      await governance.connect(ngo1).registerAsCandidate(crisisId2);
+      await governance.connect(operationalAuth).startVoting(crisisId2);
+      await mineTime(VOTING_DURATION + 1);
+      await governance.finalizeElection(crisisId2);
+
+      expect(await dm.crisisPaused(crisisId2)).to.be.false;
+      await governance.connect(crisisMS).initiateMisconductVote(crisisId2);
+      expect(await dm.crisisPaused(crisisId2)).to.be.true;
     });
   });
 });

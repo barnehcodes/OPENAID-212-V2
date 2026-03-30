@@ -8,6 +8,7 @@ The Governance contract (`contracts/Governance.sol`) implements the full crisis 
 - Coordinators are elected by stakeholders with skin in the game (donation-cap voting)
 - Government capture is mitigated (GO Vote Compression)
 - Misconduct is detected and punished (misconduct vote → reputation slashing)
+- Misbehaving coordinators are replaced through a **re-election cycle** (PAUSED → VOTING → ACTIVE)
 
 ## Contract Inheritance
 
@@ -30,7 +31,7 @@ Donors and PrivateCompanies use a 1x multiplier. Beneficiaries are exempt from d
 
 ## Crisis Lifecycle
 
-Every crisis follows a strict phase progression with two possible paths:
+Every crisis follows a phase progression with three possible paths:
 
 ```mermaid
 stateDiagram-v2
@@ -38,9 +39,13 @@ stateDiagram-v2
     DECLARED --> VOTING: startVoting()
     VOTING --> ACTIVE: finalizeElection()
 
-    ACTIVE --> CLOSED: closeCrisis()<br/>[clean path]
+    ACTIVE --> CLOSED: closeCrisis() [clean path]
     ACTIVE --> REVIEW: initiateMisconductVote()
-    REVIEW --> CLOSED: finalizeMisconductVote()
+
+    REVIEW --> ACTIVE: finalizeMisconductVote() [dismissed]
+    REVIEW --> PAUSED: finalizeMisconductVote() [confirmed]
+
+    PAUSED --> VOTING: startVoting() [re-election]
 
     CLOSED --> [*]
 
@@ -58,19 +63,26 @@ stateDiagram-v2
 
     note right of ACTIVE
         Coordinator elected
-        Escrow released
+        Escrow authority granted
         Distribution begins
     end note
 
     note left of REVIEW
         Tier-3 flags misconduct
+        Escrow frozen immediately
         72-hour review window
-        Crisis participants vote
+    end note
+
+    note right of PAUSED
+        Old coordinator banned
+        Escrow frozen
+        New candidates register
+        Re-election begins
     end note
 
     note right of CLOSED
         Clean: coordinator rewarded
-        Misconduct: coordinator slashed
+        All operations stopped
     end note
 ```
 
@@ -80,10 +92,12 @@ stateDiagram-v2
 |------|----|-------------|----------|
 | — | DECLARED | Tier-3 Multisig | `declareCrisis()` |
 | DECLARED | VOTING | Tier-1 Operational Auth | `startVoting()` |
+| PAUSED | VOTING | Tier-1 Operational Auth | `startVoting()` (re-election) |
 | VOTING | ACTIVE | Anyone (after window closes) | `finalizeElection()` |
 | ACTIVE | CLOSED | Tier-1 Operational Auth | `closeCrisis()` (clean path) |
 | ACTIVE | REVIEW | Tier-3 Multisig | `initiateMisconductVote()` |
-| REVIEW | CLOSED | Anyone (after window closes) | `finalizeMisconductVote()` |
+| REVIEW | PAUSED | Anyone (after window closes) | `finalizeMisconductVote()` (confirmed) |
+| REVIEW | ACTIVE | Anyone (after window closes) | `finalizeMisconductVote()` (dismissed) |
 
 ## Crisis Declaration
 
@@ -106,7 +120,7 @@ struct Crisis {
     string  description;
     uint256 severity;          // 1-5
     uint256 baseDonationCap;   // Reference for voting eligibility
-    Phase   phase;             // DECLARED, VOTING, ACTIVE, REVIEW, CLOSED
+    Phase   phase;             // DECLARED, VOTING, ACTIVE, REVIEW, PAUSED, CLOSED
     uint256 declaredAt;        // Block timestamp
     address coordinator;       // Elected coordinator (set after election)
     bool    misconductFlagged; // True if misconduct vote was initiated
@@ -118,7 +132,8 @@ struct Crisis {
 ### Candidacy Registration: `registerAsCandidate(uint256 crisisId)`
 
 - **Caller**: Verified GO or NGO (checked via `registry.isVerifiedValidator()`)
-- **Phase**: DECLARED or VOTING (late registration allowed)
+- **Phase**: DECLARED, VOTING, or PAUSED (late registration allowed; PAUSED enables re-election candidates)
+- **Blacklist check**: Candidates blacklisted from this crisis (previous misconduct) are rejected
 - **Donation cap enforcement**: Candidate must have donated at least `baseDonationCap × multiplier` to the crisis
   - GO: 15x (`GO_CAP_MULTIPLIER`)
   - NGO: 10x (`NGO_CAP_MULTIPLIER`)
@@ -139,7 +154,7 @@ struct Crisis {
 
 - **GO vote tracking**: GO votes are stored separately in `goVoteCount` per candidate and `_totalGOVotes[crisisId]` globally, enabling the compression algorithm
 - **Reputation integration**: If ReputationEngine is set, calls `reputationEngine.recordVoteCast(msg.sender)` for GO and NGO voters (feeds into V_i voting activeness component)
-- **Double-vote prevention**: `hasVoted[voter][crisisId]` mapping
+- **Double-vote prevention**: `hasVoted[voter][crisisId][round]` — uses election round to allow re-voting in new rounds after PAUSED → VOTING transitions
 
 ### Election Finalization: `finalizeElection(uint256 crisisId)`
 
@@ -179,14 +194,14 @@ sequenceDiagram
 
     alt Escrow has funds
         GOV->>DM: releaseEscrowToCoordinator(crisisId, winner)
-        Note over DM: AID transferred to coordinator
+        Note over DM: Coordinator gets authority (funds stay in escrow)
     end
 ```
 
 - **Caller**: Anyone (permissionless, after voting window closes)
 - **Phase**: VOTING only, `block.timestamp > votingEnd[crisisId]`
 - **Tiebreaking**: Candidate who registered first wins (lower array index)
-- **Effects**: Phase → ACTIVE, coordinator set, donations deactivated, escrow released
+- **Effects**: Phase → ACTIVE, coordinator set, donations deactivated, escrow authority granted
 
 ## GO Vote Compression Algorithm
 
@@ -196,18 +211,6 @@ The compression algorithm is the key anti-capture mechanism. It prevents a gover
 - Let `T` = total GO votes cast across all candidates (`_totalGOVotes[crisisId]`)
 - If `T > 0` AND one candidate holds ALL `T` votes (unanimous) → that candidate gets **1 effective GO vote** (not T)
 - If GOs are split across multiple candidates → each GO vote counts **at face value**
-
-**Detection logic in `finalizeElection()`:**
-
-```
-1. Read totalGOVotes for the crisis
-2. If totalGOVotes > 0:
-   a. Iterate candidates
-   b. If any candidate.goVoteCount == totalGOVotes → goUnanimity = true
-3. When tallying:
-   - If goUnanimity AND candidate.goVoteCount == totalGOVotes → add 1 (not T)
-   - If !goUnanimity → add candidate.goVoteCount as-is
-```
 
 **Example:** 3 GOs all vote for Candidate A, 2 NGOs + 5 donors vote for Candidate B.
 - Without compression: A gets 3, B gets 7 → B wins
@@ -220,7 +223,10 @@ The compression algorithm is the key anti-capture mechanism. It prevents a gover
 
 - **Caller**: Tier-3 Multisig only
 - **Phase**: ACTIVE only, coordinator must be elected, no existing misconduct flag
-- **Effects**: Phase → REVIEW, opens 72-hour voting window, creates `MisconductTally`
+- **Effects**:
+  - Phase → REVIEW
+  - Opens 72-hour voting window, creates `MisconductTally`
+  - **Freezes escrow immediately**: calls `donationManager.pauseCrisis(crisisId)`
 
 ### Voting: `castMisconductVote(uint256 crisisId, bool isMisconduct)`
 
@@ -237,37 +243,67 @@ The compression algorithm is the key anti-capture mechanism. It prevents a gover
 - **Caller**: Anyone (permissionless, after review window closes)
 - **Decision rule**: Simple majority — `votesFor > totalVotes / 2`
 - **No votes cast**: Misconduct is NOT confirmed (benefit of the doubt)
-- **Effects**: Phase → CLOSED
-- **If confirmed**: Calls `reputationEngine.recordMisconduct(coordinator, crisisId)` — triggers quadratic penalty and immediate eligibility check
+
+#### If Misconduct Confirmed:
+
+1. Slash reputation: `reputationEngine.recordMisconduct(coordinator, crisisId)`
+2. Ban old coordinator: `_blacklisted[crisisId][coordinator] = true`
+3. Strip authority: `crisis.coordinator = address(0)`
+4. Phase → **PAUSED** (not CLOSED)
+5. Clear misconduct flag: `crisis.misconductFlagged = false` (allows future flags for new coordinator)
+6. Clear candidates list
+7. Increment election round: `electionRound[crisisId] += 1`
+8. Reset voting window
+9. Escrow remains frozen from initiation
+
+#### If Misconduct Dismissed:
+
+1. Phase → **ACTIVE** (coordinator vindicated)
+2. Clear misconduct flag
+3. Unfreeze escrow: `donationManager.unpauseCrisis(crisisId)`
 
 ```mermaid
 sequenceDiagram
     participant T3 as Tier-3 Multisig
     participant GOV as Governance
-    participant Voters as Crisis Participants
+    participant DM as DonationManager
     participant RE as ReputationEngine
 
     T3->>GOV: initiateMisconductVote(crisisId)
+    GOV->>DM: pauseCrisis(crisisId)
+    Note over DM: Escrow frozen immediately
     Note over GOV: Phase: ACTIVE → REVIEW
-    Note over GOV: 72-hour window opens
 
-    loop Each involved participant
-        Voters->>GOV: castMisconductVote(crisisId, true/false)
-    end
-
-    Note over GOV: 72-hour window closes
+    Note over GOV: 72-hour window...
 
     GOV->>GOV: finalizeMisconductVote(crisisId)
-    Note over GOV: Phase: REVIEW → CLOSED
 
-    alt votesFor > totalVotes / 2
+    alt Misconduct confirmed (majority)
         GOV->>RE: recordMisconduct(coordinator, crisisId)
-        Note over RE: Quadratic penalty applied
-        Note over RE: Immediate eligibility check
-    else Misconduct not confirmed
-        Note over GOV: No reputation effect
+        Note over GOV: Phase: REVIEW → PAUSED
+        Note over GOV: Coordinator banned, round incremented
+        Note over DM: Escrow stays frozen
+    else Misconduct dismissed
+        GOV->>DM: unpauseCrisis(crisisId)
+        Note over GOV: Phase: REVIEW → ACTIVE
+        Note over DM: Escrow unfrozen, coordinator restored
     end
 ```
+
+## Re-Election Cycle
+
+When a crisis enters PAUSED:
+
+1. **Old coordinator is banned** from this crisis (`_blacklisted[crisisId][coordinator]`)
+2. **Candidates list is cleared** — all previous candidates must re-register
+3. **Election round is incremented** — voters can vote again in the new round
+4. **New candidates register** during PAUSED phase
+5. **Tier-1 starts voting** — transitions PAUSED → VOTING
+   - `donationManager.unpauseCrisis()` is called, reopening donations
+6. **Election proceeds normally** — same compression algorithm, same finalization logic
+7. **New coordinator distributes remaining escrow** to beneficiaries
+
+A crisis can go through multiple re-election cycles if successive coordinators misbehave. Each cycle increments `electionRound[crisisId]`.
 
 ## Clean Closure: `closeCrisis(uint256 crisisId)`
 
@@ -289,9 +325,11 @@ sequenceDiagram
 | `_candidateIndexPlusOne` | `mapping(uint256 => mapping(address => uint256))` | 1-indexed candidate lookup (0 = not registered) |
 | `_totalGOVotes` | `mapping(uint256 => uint256)` | Total GO votes per crisis |
 | `votingStart` / `votingEnd` | `mapping(uint256 => uint256)` | Election time window |
-| `hasVoted` | `mapping(address => mapping(uint256 => bool))` | Double-vote prevention (elections) |
+| `hasVoted` | `mapping(address => mapping(uint256 => mapping(uint256 => bool)))` | Double-vote prevention per round: `hasVoted[voter][crisisId][round]` |
 | `hasMisconductVoted` | `mapping(address => mapping(uint256 => bool))` | Double-vote prevention (misconduct) |
 | `_misconductTally` | `mapping(uint256 => MisconductTally)` | Misconduct vote counts |
+| `_blacklisted` | `mapping(uint256 => mapping(address => bool))` | Banned coordinators per crisis |
+| `electionRound` | `mapping(uint256 => uint256)` | Election round counter per crisis (starts at 0) |
 
 ## View Functions
 
@@ -318,7 +356,7 @@ sequenceDiagram
 | `NoCandidates(crisisId)` | Starting voting with no candidates |
 | `VotingStillOpen(crisisId)` | Finalizing election before window closes |
 | `VotingClosed(crisisId)` | Voting after window closes |
-| `AlreadyVoted(voter, crisisId)` | Double vote in election |
+| `AlreadyVoted(voter, crisisId)` | Double vote in election (same round) |
 | `AlreadyMisconductVoted(voter, crisisId)` | Double vote in misconduct review |
 | `NotRegistered(addr)` | Unregistered address trying to vote |
 | `MisconductVotingStillOpen(crisisId)` | Finalizing misconduct before window closes |
@@ -326,3 +364,4 @@ sequenceDiagram
 | `MisconductAlreadyFlagged(crisisId)` | Second misconduct initiation for same crisis |
 | `CoordinatorNotElected(crisisId)` | Misconduct vote before election |
 | `NotInvolvedInCrisis(addr, crisisId)` | Non-participant trying to vote on misconduct |
+| `BlacklistedFromCrisis(addr, crisisId)` | Banned coordinator trying to re-register |

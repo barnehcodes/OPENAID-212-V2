@@ -10,8 +10,8 @@ interface IGovernance {
     // Types
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// @notice Strict one-way crisis phase progression. No phase may be skipped.
-    enum Phase { DECLARED, VOTING, ACTIVE, REVIEW, CLOSED }
+    /// @notice Crisis phase progression. Includes PAUSED for re-election cycles.
+    enum Phase { DECLARED, VOTING, ACTIVE, REVIEW, PAUSED, CLOSED }
 
     /// @notice On-chain record for a single crisis event.
     struct Crisis {
@@ -55,6 +55,9 @@ interface IGovernance {
     event MisconductVoteCast(uint256 indexed crisisId, address indexed voter, bool isMisconduct);
     event MisconductVoteFinalized(uint256 indexed crisisId, bool misconductConfirmed, uint256 votesFor, uint256 votesAgainst);
     event CrisisClosed(uint256 indexed crisisId);
+    event CrisisPaused(uint256 indexed crisisId, address indexed oldCoordinator);
+    event MisconductDismissed(uint256 indexed crisisId);
+    event CoordinatorRevoked(uint256 indexed crisisId);
     event ReputationEngineSet(address indexed reputationEngine);
 
     // ─────────────────────────────────────────────────────────────────────────

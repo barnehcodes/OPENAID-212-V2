@@ -139,73 +139,55 @@ OPENAID-212-V2/
 └── README.md
 ```
 
-## Current Phase: EGT Model Alignment Fix + Technical Documentation
+## Current Phase: Contract Changes — Supervisor Feedback (Phase 7)
 
 ### What's Done
-- All 4 contracts implemented and tested (305 tests passing)
-- Besu QBFT network running (4 nodes, blocks producing)
-- Full scenario testing complete (84 transactions, both clean + misconduct paths)
-- Static analysis audit complete (Slither + Solhint)
-- Demo deployment with short voting durations working
+- All previous phases complete (contracts, Besu, deployment, scenarios, audit, k2 fix, docs)
+- 322 tests passing (305 original + 17 k2 weighting tests)
+- Technical documentation in docs/technical/
 
 ### What We're Doing Now
-1. Fixing a scoring formula gap: k2 phase weighting not applied to C_i (penalties/rewards)
-2. Generating comprehensive technical documentation for the thesis report
+Implementing contract changes from supervisor feedback. All changes are detailed in CONTRACT-CHANGES-REFERENCE.md in the project root. Read that file BEFORE writing any code.
 
-### Change 1: Apply k2 weighting to C_i (ReputationEngine.sol)
-- recordMisconduct() and recordSuccessfulCoordination() currently apply penalties/rewards at full force
-- They need to multiply by config.k2 / SCALE before applying, so phase weights affect behavioral scoring
-- During preparedness (k2=30), penalties should hit at 30% force; during active crisis (k2=60), at 60%
-- This is the ONLY contract code change needed
-- All 305+ existing tests must continue to pass
-- Add new test cases for the k2 weighting behavior
+### Summary of Changes (4 groups)
 
-### Change 2: Technical Documentation (Markdown with Mermaid diagrams)
-- Create docs/technical/ directory
-- One doc per contract + one system architecture overview
-- These serve as source of truth for the thesis report chapters
-- Include Mermaid diagrams where relevant
-- Reference actual contract code — use real function names, constants, state variables
+**Group 1: Escrow Model Fix**
+- Coordinator gets distribution authority, not funds
+- releaseEscrowToCoordinator() no longer transfers tokens
+- distributeFTToBeneficiary() pulls from escrow directly to beneficiary
 
-### What NOT To Do
-- Don't modify Registry.sol, Governance.sol, or DonationManager.sol
-- Don't modify GovernanceDemo.sol
-- Don't modify existing tests — only add new test cases for k2 weighting
-- Don't re-run scenario scripts — the k2 change is internal math, not workflow
-- Don't create docx files — plain Markdown with Mermaid code blocks only
-- All 305+ existing tests must continue to pass
+**Group 2: PAUSED State + Re-Election Cycle**
+- New Phase.PAUSED added to crisis lifecycle
+- Misconduct confirmed → crisis paused, coordinator banned, escrow frozen
+- Re-election cycle: PAUSED → VOTING → ACTIVE with new coordinator
+- Escrow freeze/unfreeze linked to crisis state
+- hasVoted gains election round dimension
+- pauseCrisis() / unpauseCrisis() added to DonationManager
 
-                                                                                          
-● The epoch keeps advancing since the contract's epoch guard allows one call per epoch and each call advances  
-  the epoch. The graceful handling would only trigger if updateScores() were called twice within the same epoch
-   (same block/transaction context). The script works correctly in both cases.
-                                                                                                               
-  Results summary:                                          
-                                                                                                               
-  ┌──────────────────────────────┬───────────────────────────────────────────────────────────────────────┐
-  │            Check             │                                Status                                 │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Compilation                  │ Already up to date                                                    │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Demo deployment              │ 4 contracts deployed, all wiring verified                             │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Step 0: Direct Donation      │ donor1 sent 50 AID directly to beneficiary1 (gas: 85,503)             │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Scenario A (clean path)      │ DECLARED → VOTING → ACTIVE → CLOSED, ngo2 elected via GO compression  │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Scenario B (misconduct path) │ DECLARED → VOTING → ACTIVE → REVIEW → CLOSED, ngo1 slashed (100 → 96) │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Epoch update (in scenario)   │ Epoch 1 → 2, all 5 validators scored                                  │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Epoch cron script            │ Worked correctly, advanced epoch 2 → 3 → 4 on successive runs         │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Total transactions           │ 84 (83 previous + 1 new directDonateFT)                               │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Total AID minted             │ 10,350 (10,300 crisis + 50 direct)                                    │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Beneficiary 1 balance        │ 2,050 (50 direct + 2,000 crisis distribution)                         │
-  ├──────────────────────────────┼───────────────────────────────────────────────────────────────────────┤
-  │ Errors                       │ None                                                                  │
-  └──────────────────────────────┴───────────────────────────────────────────────────────────────────────┘
+**Group 3: Direct In-Kind Donations**
+- directDonateInKind(facility, beneficiary, metadataURI) — three-party flow
+- facility field added to InKindDonation struct
+- confirmFacilityDelivery() — facility confirms delivery
+- Existing confirmInKindRedemption() works unchanged for beneficiary step
 
-                                            
+**Group 4: Documentation Cleanup**
+- Update all docs/technical/ files to reflect changes
+- ReputationEngine docs: strip theoretical EGT concepts, keep only implemented math
+
+### Implementation Order
+1. Group 1 (escrow) — most tests depend on this
+2. Group 3 (direct in-kind) — struct change needed early since it affects Group 2
+3. Group 2 (PAUSED state) — largest change, depends on Groups 1 and 3
+4. Group 4 (docs) — after all code changes are stable
+
+### Rules
+- Read CONTRACT-CHANGES-REFERENCE.md before touching any code
+- Create a GitHub issue for each change group BEFORE starting it
+- After completing each group, add a comment to the issue explaining what changed
+- Close the issue after tests pass
+- All 322+ existing tests must be updated to work with struct/signature changes
+- Add new tests for every new function and state transition
+- Run full test suite after each group — no regressions allowed
+- Follow existing code style: custom errors, NatSpec, events for state changes
+- Do NOT modify ReputationEngine.sol contract code (only its documentation)
+```
