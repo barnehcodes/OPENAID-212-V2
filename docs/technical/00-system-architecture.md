@@ -76,7 +76,7 @@ The circular dependency between Governance and ReputationEngine (Governance call
 Every crisis follows a phase progression with multiple possible paths, including a re-election cycle after misconduct:
 
 
- ![Crisis Lifecycle](./docs/technical/crisis-lifecycle.png)
+![Crisis Lifecycle](./crisis-lifecycle.png)
  
 ### Escrow-Phase Link
 
@@ -97,7 +97,7 @@ a desing choice was made that makes the coordinator **never holds funds**. When 
 
 This prevents a misbehaving coordinator from taking funds. If misconduct is confirmed, the coordinator is banned and loses distribution authority (can't be coordinator for that crisis again),  and the funds are still in escrow and available for the next coordinator.
 
-## Three-Tier Authority Model (just the idea)
+## Three-Tier Authority Model (prototype uses single-signer placeholders)
 
 Authority is split across three tiers to prevent a single-point-of-trust contradiction in a zero-trust system. Each tier corresponds to a different risk level and requires a different approval threshold.
 
