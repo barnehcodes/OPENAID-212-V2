@@ -74,7 +74,16 @@ The `decimals()` function returns `0`, consistent with the system's integer-only
 
 #### Why Not ERC721?
 
-Inheriting both ERC20 and ERC721 from OpenZeppelin v5 causes a function signature collision: both define `_transfer(address, address, uint256)` with incompatible semantics. Rather than introducing complex resolution patterns, in-kind donations use a custom struct with manual ownership tracking. This provides the same lifecycle guarantees (PENDING → ASSIGNED → REDEEMED) without the inheritance conflict.
+Inheriting both ERC20 and ERC721 from OpenZeppelin v5 causes a function signature collision: 
+in simple terms both ERC20 (for Fungible tokens ) and ERC721 (for non-FT) have the same internal function` _transfer`  same name, and same parameter types `(address, address, uint256)`, but do diffrent things.
+if we inherits both,  the code wont knwo which is which (tranfer FT or NFT), so the solution i came up with is to inherits only ERC20 (for the AID token) and handles in-kind donations with a plain struct and mapping: 
+@note: there's another way of doing this and still inherits both, but that would require to override both and manually seperate concerns (gets complicated), teh current approach is not the ultimate win, we lose some featuires that come with ERC721 transferFrom, approve, and some wallets compatibility but we are willing to make that loss since its humanitarian not marketplace.
+
+```solidity 
+mapping(uint256 => InKindDonation) public inKindDonations;
+mapping(uint256 => address) private _nftOwners;
+uint256 private _nftCounter;
+```
 
 ## In-Kind Donation Lifecycle
 
