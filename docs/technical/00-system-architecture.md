@@ -138,20 +138,3 @@ Tier 3 can update any authority address (including itself) via `updateOperationa
 
 The social layer (multisig signers, cron jobs, IPFS, monitoring) handles everything that requires human judgment or external infrastructure. The smart contracts enforce the rules that the social layer has agreed upon.
 
-## Key Design Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **ERC20 inside DonationManager** | AID token (`OpenAID Donation Token`) is inherited via `ERC20`, not a separate contract | Avoids a separate deployment + approval flow; escrow is just holding tokens in `address(this)` |
-| **In-kind tracking: custom struct, NOT ERC721** | `InKindDonation` struct with `Status` enum and manual `_nftOwners` mapping | Inheriting both ERC20 and ERC721 from OpenZeppelin v5 causes a `_transfer(address,address,uint256)` signature collision. Custom tracking avoids this while providing the same lifecycle guarantees |
-| **Escrow authority model** | Coordinator gets distribution authority, not fund custody | Prevents misbehaving coordinators from absconding with funds; tokens remain in contract escrow |
-| **PAUSED state with re-election** | Misconduct confirmation → PAUSED (not CLOSED); banned coordinator, re-election cycle | Remaining escrow is preserved for a new coordinator; crisis doesn't die from one bad actor |
-| **Tiered multisig authority** | Three tiers with different thresholds (1-of-1, 2-of-3, 4-of-7) | No single actor class can unilaterally take system-critical actions; low-risk actions remain fast |
-| **GO Vote Compression** | If all GOs vote unanimously → compress to 1 vote; if split → normal counting | Prevents government bloc from capturing coordinator elections while preserving their voice when split |
-| **Integer math scaled by 100** | All percentages/weights use `uint256` with `SCALE = 100` | Solidity has no floating point; scaling by 100 gives two decimal places of precision with simple integer division |
-| **Quadratic penalties, linear rewards** | Penalty grows as `n²`; reward is constant (dampened by ceiling reducer) | Asymmetric by design: one misconduct is recoverable, but repeated offenses quickly become devastating |
-| **MIN_VALIDATORS = 4** | Safety floor: never deactivate validators below 4 active | QBFT consensus requires a minimum validator set; collapsing below 4 would halt the chain |
-| **0 decimals on AID token** | `decimals() returns 0` | 1 AID = 1 MAD (Moroccan Dirham); whole units only, consistent with integer-only math |
-| **Permissionless `updateScores()`** | Anyone can call it (gated only by epoch guard) | Removes trust dependency on any single entity for epoch progression; cron script is a convenience, not a requirement |
-| **Per-crisis beneficiary verification** | `crisisVerification[beneficiary][crisisId]` | Prevents permanent voting blocs — a beneficiary verified for crisis A cannot vote in crisis B |
-| **Direct in-kind donations** | Three-party flow (Donor → Facility → Beneficiary) for non-crisis in-kind donations | Mirrors directDonateFT for tokens; facility (verified GO/NGO) handles logistics |
