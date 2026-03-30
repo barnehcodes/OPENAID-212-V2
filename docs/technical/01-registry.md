@@ -109,7 +109,7 @@ flowchart TD
 - **Caller**: Tier-2 Verification Multisig (`VERIFICATION_ROLE`)
 - **Preconditions**: Address must be registered, must be Role.NGO, must not already be verified
 - **Effect**: Sets `isVerified = true` on the Participant record
-- **Proof parameter**: Contains off-chain WANGO verification evidence (e.g., registration certificate hash). The proof is kept in calldata for permanent on-chain auditability but is **not stored** in contract state to save gas. The Tier-2 multisig signers are responsible for validating the proof before signing the transaction.
+- **Proof parameter**: Contains off-chain WANGO verification evidence (e.g., registration certificate hash). The proof is kept in calldata for permanent on-chain auditability but is **not stored** in contract state. The Tier-2 multisig signers are responsible for validating the proof before signing the transaction.
 - **Events**: `NGOVerified(ngo)`
 
 ### Beneficiary Verification: `verifyBeneficiary(address beneficiary, uint256 crisisId, bytes calldata proof)`
