@@ -122,7 +122,7 @@ graph TD
 | **Tier 3** | 4-of-7 multisig (2 GO + 2 NGO + 3 Community) | 4-of-7 | `declareCrisis()`, `initiateMisconductVote()`, `updateAuthority()`, `setPhaseConfig()` | System-critical actions — no single actor class can reach threshold alone |
 
 IMPORTANT :
-**for now we only implement 3 address to represnt each tier, the actual multi sig implementation is not done yet at this level. for testing **
+**for now we only implement 3 address to represnt each tier, the actual multi sig implementation is not done yet at this level. for testing**
 when we would want to implement the Gnosis safe multisig, we can do so by swapping that address ( see below ) for a real Gnosis Safe contract in production, the current contract code checks checks `msg.sender == verificationMultisig ` so we will not change anything in the contracts if we were to adobt it.
 
 
