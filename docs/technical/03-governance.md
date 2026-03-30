@@ -1,7 +1,5 @@
 # Governance — Democratic Engine
 
-## Purpose
-
 The Governance contract (`contracts/Governance.sol`) implements the full crisis lifecycle: from declaration through coordinator election to closure or misconduct accountability. It is the democratic engine of OpenAID +212, ensuring that:
 
 - Crises are declared by a broad coalition (Tier-3 multisig)
@@ -16,7 +14,7 @@ The Governance contract (`contracts/Governance.sol`) implements the full crisis 
 Governance is IGovernance
 ```
 
-No OpenZeppelin mixins — authority checks read directly from the Registry rather than duplicating role storage. This ensures that if the Tier-1 or Tier-3 authority address is updated in the Registry, Governance immediately respects the change.
+authority checks read directly from the Registry rather than duplicating role storage. This ensures that if the Tier-1 or Tier-3 authority address is updated in the Registry, Governance immediately respects the change.
 
 ## Constants
 
@@ -85,6 +83,24 @@ stateDiagram-v2
         All operations stopped
     end note
 ```
+The lifecycle begins when the Tier-3 Crisis Declaration Multisig calls `declareCrisis()` this triggers 3 things: assigns a crisis ID, sets the phase to DECLARED, and immediately opens donations in the DonationManager by calling `activateCrisis()`. During the DECLARED phase, donations flow into the escrow pool, verified GOs and NGOs who meet the donation cap can register as coordinator candidates, and the Tier-2 multisig begins verifying beneficiaries for this crisis. 
+
+@notice there's a limitation her, during the Coordinator election voting window the Beneficiaries would have only 48h (not counting the time before the first candiddate registers) to get verified to be able to votefor who should be a coordinator. But after they had been verified they can participate throughout the crisis.
+
+When at least one candidate has registered, the Tier-1 Operational Authority calls `startVoting()` to open a 48-hour election window, donors who met the base donation cap, NGOs at 10x the cap, GOs at 15x, and crisis-verified beneficiaries cast their votes for their preferred coordinator. The GO Vote Compression algorithm applies (all same vote= 1 vote counts)
+
+After the 48-hour window expires, anyone can call `finalizeElection() `to sum up the votes and determine the winner. The crisis transitions to ACTIVE, donations close, and the winning coordinator receives distribution authority over the escrow
+
+From here  the crisis can follow one of three paths :
+1. **clean path** :  the coordinator distributes aid honestly, the Tier-1 authority calls `closeCrisis()`, the coordinator receives a positive reputation reward, and the crisis moves to CLOSED.
+2. **misconduct is suspected** : If misconduct is suspected, the Tier-3 multisig calls `initiateMisconductVote()`, which immediately freezes the escrow so that no distributions can occur during the investigation, opens a 72-hour review window where participants (GOs, NGOs, verified beneficiaries, and donors who contributed to this crisis) vote on whether misconduct occurred. After the window closes, `finalizeMisconductVote()` determines the outcome by simple majority. If misconduct is not confirmed, then the coordinator is in the clear things go back as they were
+3. **misconduct is confirmed**:  If misconduct is confirmed, the crisis enters the PAUSED phase rather than closing permanently. where the coordinator is striped from there  distribution authority and role (coordinator), slashes their reputation score through the ReputationEngine's quadratic penalty and blacklists them from re-registering as a candidate for this crisis (cant be candidate corrdinator in the new vote)
+    - remaining escrow funds stay safely in the contract
+    - New candidates can then register
+    - the Tier-1 authority calls startVoting() again, the crisis re-enters the election cycle
+    - A new coordinator is elected, receives authority over the remaining escrow, and distribution resumes.
+=> if the new guy also missbehaves the same process is followed again 
+=> The PAUSED phase is directly linked to the escrow state in DonationManager through `pauseCrisis()` and `unpauseCrisis()`. When a crisis is paused, both new donations and distributions are blocked. When it transitions back to VOTING for re-election, donations reopen so new candidates can meet the donation cap threshold required for candidacy. 
 
 ### Phase Transitions Summary
 
@@ -157,46 +173,6 @@ struct Crisis {
 - **Double-vote prevention**: `hasVoted[voter][crisisId][round]` — uses election round to allow re-voting in new rounds after PAUSED → VOTING transitions
 
 ### Election Finalization: `finalizeElection(uint256 crisisId)`
-
-```mermaid
-sequenceDiagram
-    participant V as Voters
-    participant GOV as Governance
-    participant DM as DonationManager
-
-    Note over GOV: Voting window expires
-
-    rect rgb(255, 243, 224)
-        Note over GOV: GO Vote Compression Check
-        GOV->>GOV: Count total GO votes (T)
-        GOV->>GOV: Check if any candidate holds all T votes
-        alt All GOs voted for same candidate
-            GOV->>GOV: goUnanimity = true
-            Note over GOV: Unanimous GO bloc → compress to 1 vote
-        else GOs split across candidates
-            GOV->>GOV: goUnanimity = false
-            Note over GOV: Each GO vote counts normally
-        end
-    end
-
-    rect rgb(232, 245, 233)
-        Note over GOV: Tally Final Votes
-        loop Each candidate
-            GOV->>GOV: finalVotes = nonGO_votes + compressed_GO_votes
-        end
-        GOV->>GOV: Winner = highest votes (first-registered tiebreaker)
-    end
-
-    GOV->>GOV: crisis.phase = ACTIVE
-    GOV->>GOV: crisis.coordinator = winner
-    GOV->>DM: deactivateCrisis(crisisId)
-    Note over DM: Donations closed
-
-    alt Escrow has funds
-        GOV->>DM: releaseEscrowToCoordinator(crisisId, winner)
-        Note over DM: Coordinator gets authority (funds stay in escrow)
-    end
-```
 
 - **Caller**: Anyone (permissionless, after voting window closes)
 - **Phase**: VOTING only, `block.timestamp > votingEnd[crisisId]`
@@ -312,56 +288,4 @@ A crisis can go through multiple re-election cycles if successive coordinators m
 - **Effects**: Phase → CLOSED
 - **Reward**: Calls `reputationEngine.recordSuccessfulCoordination(coordinator, crisisId)` — awards linear reward dampened by timeout history and k2 phase weighting
 
-## State Variables
 
-| Variable | Type | Purpose |
-|----------|------|---------|
-| `registry` | `IRegistry` (immutable) | Identity and authority lookups |
-| `donationManager` | `IDonationManager` (immutable) | Escrow management, donation caps |
-| `reputationEngine` | `IReputationEngine` | Reputation scoring (set post-deployment, can be address(0)) |
-| `nextCrisisId` | `uint256` | Auto-incrementing crisis ID (starts at 1) |
-| `_crises` | `mapping(uint256 => Crisis)` | Crisis records |
-| `_candidatesList` | `mapping(uint256 => Candidacy[])` | Candidates per crisis |
-| `_candidateIndexPlusOne` | `mapping(uint256 => mapping(address => uint256))` | 1-indexed candidate lookup (0 = not registered) |
-| `_totalGOVotes` | `mapping(uint256 => uint256)` | Total GO votes per crisis |
-| `votingStart` / `votingEnd` | `mapping(uint256 => uint256)` | Election time window |
-| `hasVoted` | `mapping(address => mapping(uint256 => mapping(uint256 => bool)))` | Double-vote prevention per round: `hasVoted[voter][crisisId][round]` |
-| `hasMisconductVoted` | `mapping(address => mapping(uint256 => bool))` | Double-vote prevention (misconduct) |
-| `_misconductTally` | `mapping(uint256 => MisconductTally)` | Misconduct vote counts |
-| `_blacklisted` | `mapping(uint256 => mapping(address => bool))` | Banned coordinators per crisis |
-| `electionRound` | `mapping(uint256 => uint256)` | Election round counter per crisis (starts at 0) |
-
-## View Functions
-
-| Function | Returns |
-|----------|---------|
-| `getCrisis(crisisId)` | Full `Crisis` struct |
-| `getCandidates(crisisId)` | Array of `Candidacy` structs |
-| `getMisconductTally(crisisId)` | `MisconductTally` struct (votesFor, votesAgainst, time window) |
-
-## Custom Errors
-
-| Error | Trigger |
-|-------|---------|
-| `CrisisNotFound(crisisId)` | Crisis ID does not exist |
-| `InvalidSeverity(severity)` | Severity not in 1–5 range |
-| `NotCrisisDeclarationAuthority(caller)` | Non-Tier-3 caller for Tier-3 function |
-| `NotOperationalAuthority(caller)` | Non-Tier-1 caller for Tier-1 function |
-| `WrongPhase(crisisId, actual)` | Operation called in wrong phase |
-| `AlreadyCandidate(addr, crisisId)` | Double candidacy registration |
-| `NotACandidate(candidate, crisisId)` | Vote for non-candidate |
-| `NotVerifiedValidator(addr)` | Non-verified GO/NGO trying to register as candidate |
-| `InsufficientDonation(addr, required, actual)` | Donation below role-specific cap |
-| `NotCrisisVerifiedBeneficiary(addr, crisisId)` | Unverified beneficiary trying to vote |
-| `NoCandidates(crisisId)` | Starting voting with no candidates |
-| `VotingStillOpen(crisisId)` | Finalizing election before window closes |
-| `VotingClosed(crisisId)` | Voting after window closes |
-| `AlreadyVoted(voter, crisisId)` | Double vote in election (same round) |
-| `AlreadyMisconductVoted(voter, crisisId)` | Double vote in misconduct review |
-| `NotRegistered(addr)` | Unregistered address trying to vote |
-| `MisconductVotingStillOpen(crisisId)` | Finalizing misconduct before window closes |
-| `MisconductVotingClosed(crisisId)` | Misconduct vote after window closes |
-| `MisconductAlreadyFlagged(crisisId)` | Second misconduct initiation for same crisis |
-| `CoordinatorNotElected(crisisId)` | Misconduct vote before election |
-| `NotInvolvedInCrisis(addr, crisisId)` | Non-participant trying to vote on misconduct |
-| `BlacklistedFromCrisis(addr, crisisId)` | Banned coordinator trying to re-register |
