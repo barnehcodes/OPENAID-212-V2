@@ -2,8 +2,6 @@
 
 ## Overview
 
-OpenAID +212 is a blockchain-based humanitarian aid distribution system designed for Morocco. It addresses the core trust problem in humanitarian logistics: how do you ensure that donated resources reach their intended recipients when the system itself must operate under adversarial conditions — crises where institutions may fail, coordination may break down, and actors may behave dishonestly?
-
 The system runs on **Hyperledger Besu** with **QBFT consensus** (4-node network, 2-second block time) and implements four smart contracts that together provide:
 
 - **Identity and verification** — who is allowed to participate, and in what capacity
@@ -19,10 +17,10 @@ The system is composed of four contracts deployed in strict order, each building
 
 | Order | Contract | Purpose | Dependencies |
 |-------|----------|---------|-------------|
-| 1 | **Registry** | Identity layer — roles, verification, authority management | None |
-| 2 | **DonationManager** | Financial engine — ERC20 token, escrow, distribution | Registry |
-| 3 | **Governance** | Democratic engine — crisis lifecycle, elections, misconduct, re-election | Registry, DonationManager |
-| 4 | **ReputationEngine** | Scoring engine — validator reputation, Besu permissioning | Registry, Governance |
+| 1 | **Registry** | Identity layer : roles, verification, authority management | None |
+| 2 | **DonationManager** | Financial engine : ERC20 token, escrow, distribution | Registry |
+| 3 | **Governance** | Democratic engine : crisis lifecycle, elections, misconduct, re-election | Registry, DonationManager |
+| 4 | **ReputationEngine** | Scoring engine : validator reputation, Besu permissioning | Registry, Governance |
 
 ### Contract Dependency Graph
 
@@ -77,29 +75,9 @@ The circular dependency between Governance and ReputationEngine (Governance call
 
 Every crisis follows a phase progression with multiple possible paths, including a re-election cycle after misconduct:
 
-```mermaid
-stateDiagram-v2
-    [*] --> DECLARED: declareCrisis()
-    DECLARED --> VOTING: startVoting()
-    VOTING --> ACTIVE: finalizeElection()
 
-    ACTIVE --> CLOSED: closeCrisis() [clean path]
-    ACTIVE --> REVIEW: initiateMisconductVote()
-
-    REVIEW --> ACTIVE: finalizeMisconductVote() [dismissed]
-    REVIEW --> PAUSED: finalizeMisconductVote() [confirmed]
-
-    PAUSED --> VOTING: startVoting() [re-election]
-
-    CLOSED --> [*]
-
-    note right of PAUSED
-        Old coordinator banned
-        Escrow frozen
-        Candidates register for re-election
-    end note
-```
-
+ ![Crisis Lifecycle](./docs/technical/crisis-lifecycle.png)
+ 
 ### Escrow-Phase Link
 
 | Crisis Phase | Escrow State | Donations | Distributions |
@@ -115,9 +93,9 @@ stateDiagram-v2
 
 ## Escrow Authority Model
 
-The coordinator **never holds funds**. When a coordinator is elected, `releaseEscrowToCoordinator()` records the coordinator's address as having distribution authority, but the AID tokens remain in the DonationManager contract (`address(this)`). Distribution calls (`distributeFTToBeneficiary()`) transfer tokens directly from the contract's escrow to the beneficiary, deducting from `crisisEscrow[crisisId]`.
+a desing choice was made that makes the coordinator **never holds funds**. When a coordinator is elected, `releaseEscrowToCoordinator()` records the coordinator's address as having distribution authority (right to use the funds), but the AID tokens remain in the DonationManager contract (`address(this)`). Distribution calls (`distributeFTToBeneficiary()`) transfer tokens directly from the contract's escrow to the beneficiary, deducting from `crisisEscrow[crisisId]`.
 
-This prevents a misbehaving coordinator from taking funds. If misconduct is confirmed, the coordinator is banned and loses distribution authority — but the funds are still in escrow and available for the next coordinator.
+This prevents a misbehaving coordinator from taking funds. If misconduct is confirmed, the coordinator is banned and loses distribution authority (can't be coordinator for that crisis again),  and the funds are still in escrow and available for the next coordinator.
 
 ## Three-Tier Authority Model
 
