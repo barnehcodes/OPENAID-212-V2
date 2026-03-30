@@ -100,66 +100,31 @@ struct InKindDonation {
     address facility;     // GO/NGO handling logistics (address(0) for crisis-bound)
 }
 ```
+**Crisis-bound in-kind donations**  follows the three-way verification flow through the elected coordinator,  it starts by the donor commiting a physical item by calling donateInKind() with the crisis ID and an IPFS metadata URI describing the item (type, condition, quantity, photos).  The contract creates a record with status PENDING and holds ownership itself, so far the item is committed but not yet allocated to anyone. 
+Once a coordinator is elected for that crisis, they review pending items and assign each one to a crisis-verified beneficiary by calling `assignInKindToBeneficiary()`. Now this transitions the item to ASSIGNED and transfers on-chain ownership to the beneficiary.
+The coordinator is responsible for physically delivering the item. Finally, the beneficiary calls `confirmInKindRedemption()` to confirm they actually received it, moving the status to REDEEMED. 
+If this confirmation never comes, the item stays at ASSIGNED on-chain => delivery may have failed 
 
-### Crisis-Bound Path
+**Direct in-kind donations**  using a facility (any verified GO or NGO) as the intermediary (warhouse) instead of an elected coordinator. The donor calls `directDonateInKind()` specifying three things:
+- which facility will handle delivery
+- which beneficiary should receive the item
+- the IPFS metadata URI
+The contract creates a record with status PENDING, with the facility and beneficiary pre-assigned at creation. The facility then receives the physical item from the donor and delivers it to the beneficiary, calling `confirmFacilityDelivery()` to confirm this on-chain. The nthe status moves to ASSIGNED and ownership transfers to the beneficiary. they then call `confirmInKindRedemption()` to confirm receipt, completing the cycle at REDEEMED.
 
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING: donateInKind()
-    PENDING --> ASSIGNED: assignInKindToBeneficiary()
-    ASSIGNED --> REDEEMED: confirmInKindRedemption()
-    REDEEMED --> [*]
+Donors can track the status of their in-kind donations at any time by querying getInKindDonation(nftId) with the item ID returned at donation time. The returned record shows the current lifecycle status (PENDING, ASSIGNED, or REDEEMED), which beneficiary was assigned the item, and  for direct donations  which facility handled delivery .
+Every state transition also emits an indexed event, creating a permanent on-chain timeline that any block explorer or frontend can display. This gives donors independent, verifiable proof that their specific donation reached a specific beneficiary, confirmed by that beneficiary's own on-chain signature
 
-    note right of PENDING
-        Owner: contract (address(this))
-        Donor commits physical item
-    end note
 
-    note right of ASSIGNED
-        Owner: beneficiary
-        Coordinator assigns to beneficiary
-    end note
-
-    note right of REDEEMED
-        Owner: beneficiary
-        Beneficiary confirms receipt
-    end note
-```
-
-### Direct In-Kind Path (Three-Party Flow)
-
-```mermaid
-stateDiagram-v2
-    [*] --> PENDING: directDonateInKind()
-    PENDING --> ASSIGNED: confirmFacilityDelivery()
-    ASSIGNED --> REDEEMED: confirmInKindRedemption()
-    REDEEMED --> [*]
-
-    note right of PENDING
-        Owner: contract (address(this))
-        Donor designates facility + beneficiary
-    end note
-
-    note right of ASSIGNED
-        Owner: beneficiary
-        Facility confirms physical delivery
-    end note
-
-    note right of REDEEMED
-        Owner: beneficiary
-        Beneficiary confirms receipt
-    end note
-```
-
-| Step | Crisis-Bound Path | Direct Path |
-|------|------------------|-------------|
-| 1 | Donor: `donateInKind()` | Donor: `directDonateInKind(facility, beneficiary, uri)` |
-| 2 | Coordinator: `assignInKindToBeneficiary()` | Facility: `confirmFacilityDelivery()` |
-| 3 | Beneficiary: `confirmInKindRedemption()` | Beneficiary: `confirmInKindRedemption()` |
 
 ## Escrow Authority Model
 
-The coordinator **never holds funds**. This is a key security property:
+The coordinator **never holds funds**. instead of sending the coordinator the escrow funds, risking lossing them after they have been kicked out of coordinationship, they instead only get the authority to spedn those funds:
+they tell the contract send X amount from your balance to this beneficiary."  The contract holds the tokens, not the coordinator. 
+
+in technical terms DonationManager inherits ERC20, so the contract itself is the token ledger. When `donateFT()` mints tokens, it mints them to `address(this)` — the contract's own address holds a balance on its own ledger (like a bank). When` distributeFTToBeneficiary()` calls`_transfer(address(this), beneficiary, amount)`, the contract is transferring from its own balance to the beneficiary. The coordinator's address appears nowhere in that transfer,  they're just the` msg.sender` who triggered it, and the contract checks that `msg.sender == crisisCoordinator[crisisId] `before executing.
+
+if coordinator is no loger a coordinator thsi privilege goes with it , and also they cannot become coordinator in that specific crisis again (more on that in Governance contract) 
+
 
 ### `releaseEscrowToCoordinator(uint256 crisisId, address coordinator)`
 
@@ -226,50 +191,4 @@ The DonationManager tracks crisis activation state via the `activeCrises` mappin
 | `pauseCrisis(crisisId)` | Governance (on `initiateMisconductVote()` or `finalizeMisconductVote()` confirmed) | Freezes escrow, stops donations, revokes coordinator |
 | `unpauseCrisis(crisisId)` | Governance (on `finalizeMisconductVote()` dismissed or `startVoting()` from PAUSED) | Unfreezes escrow, reopens donations |
 
-## State Variables
 
-| Variable | Type | Purpose |
-|----------|------|---------|
-| `registry` | `IRegistry` (immutable) | Source of truth for identity |
-| `governanceContract` | `address` | Governance contract — set post-deployment |
-| `activeCrises` | `mapping(uint256 => bool)` | Whether a crisis is accepting donations |
-| `crisisEscrow` | `mapping(uint256 => uint256)` | AID held in escrow per crisis |
-| `donorContribution` | `mapping(address => mapping(uint256 => uint256))` | Per-donor per-crisis donation total |
-| `crisisCoordinator` | `mapping(uint256 => address)` | Elected coordinator per crisis |
-| `crisisPaused` | `mapping(uint256 => bool)` | Whether a crisis is frozen |
-| `inKindDonations` | `mapping(uint256 => InKindDonation)` | In-kind donation records |
-| `_nftOwners` | `mapping(uint256 => address)` | Current holder of each in-kind item |
-| `_nftCounter` | `uint256` | Auto-incrementing item ID counter |
-
-## View Functions
-
-| Function | Returns |
-|----------|---------|
-| `getDonorContribution(donor, crisisId)` | Cumulative AID donated by `donor` to `crisisId` |
-| `getCrisisEscrowBalance(crisisId)` | AID currently held in escrow for `crisisId` |
-| `getInKindDonation(nftId)` | Full `InKindDonation` struct |
-| `nftOwnerOf(nftId)` | Current holder address (`address(this)` if PENDING, beneficiary if ASSIGNED/REDEEMED) |
-| `nftTotalSupply()` | Total number of in-kind donations minted |
-
-## Custom Errors
-
-| Error | Trigger |
-|-------|---------|
-| `NotRegistered(caller)` | Caller not in Registry |
-| `CrisisNotActive(crisisId)` | Donation to inactive crisis |
-| `CrisisAlreadyActive(crisisId)` | Double activation |
-| `CrisisNotCurrentlyActive(crisisId)` | Deactivation of inactive crisis |
-| `ZeroAmount()` | Zero-value donation or distribution |
-| `NotGovernance(caller)` | Non-Governance caller for restricted functions |
-| `NotCoordinator(caller, crisisId)` | Non-coordinator calling distribution functions |
-| `NotAssignedBeneficiary(caller, nftId)` | Wrong beneficiary confirming redemption |
-| `WrongNFTStatus(nftId, expected, actual)` | In-kind item not in expected lifecycle stage |
-| `NotCrisisVerifiedBeneficiary(beneficiary, crisisId)` | Beneficiary not verified for this crisis |
-| `ZeroAddress()` | Zero address in constructor or setGovernanceContract |
-| `EmptyEscrow(crisisId)` | Releasing escrow with zero balance |
-| `InsufficientEscrow(crisisId, requested)` | Distribution amount exceeds remaining escrow |
-| `NFTNotFound(nftId)` | Nonexistent in-kind item ID |
-| `NotRegisteredBeneficiary(beneficiary)` | Direct donation to non-beneficiary |
-| `NotVerifiedValidator(facility)` | Facility is not a verified GO/NGO |
-| `NotFacility(caller, nftId)` | Caller is not the designated facility |
-| `CrisisIsPaused(crisisId)` | Distribution during frozen crisis |
