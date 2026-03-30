@@ -97,7 +97,7 @@ a desing choice was made that makes the coordinator **never holds funds**. When 
 
 This prevents a misbehaving coordinator from taking funds. If misconduct is confirmed, the coordinator is banned and loses distribution authority (can't be coordinator for that crisis again),  and the funds are still in escrow and available for the next coordinator.
 
-## Three-Tier Authority Model
+## Three-Tier Authority Model (just the idea)
 
 Authority is split across three tiers to prevent a single-point-of-trust contradiction in a zero-trust system. Each tier corresponds to a different risk level and requires a different approval threshold.
 
@@ -121,7 +121,10 @@ graph TD
 | **Tier 2** | 2-of-3 multisig (1 GO + 1 NGO + 1 Community) | 2-of-3 | `verifyNGO()`, `verifyBeneficiary()` | Power-granting actions — verification unlocks voting and validator rights |
 | **Tier 3** | 4-of-7 multisig (2 GO + 2 NGO + 3 Community) | 4-of-7 | `declareCrisis()`, `initiateMisconductVote()`, `updateAuthority()`, `setPhaseConfig()` | System-critical actions — no single actor class can reach threshold alone |
 
-The Registry stores multisig **contract addresses** (e.g., Gnosis Safe). Signer management and threshold enforcement happen inside those multisig contracts, not in the Registry. This separation keeps the on-chain Registry simple while delegating the complex multi-party approval logic to battle-tested multisig implementations.
+IMPORTANT :
+**for now we only implement 3 address to represnt each tier, the actual multi sig implementation is not done yet at this level. for testing **
+when we would want to implement the Gnosis safe multisig, we can do so by swapping that address ( see below ) for a real Gnosis Safe contract in production, the current contract code checks checks `msg.sender == verificationMultisig ` so we will not change anything in the contracts if we were to adobt it.
+
 
 Tier 3 can update any authority address (including itself) via `updateOperationalAuthority()`, `updateVerificationMultisig()`, and `updateCrisisDeclarationMultisig()`. Each update atomically revokes the old address's role and grants it to the new one.
 
