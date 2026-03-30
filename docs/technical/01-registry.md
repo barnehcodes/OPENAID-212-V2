@@ -1,7 +1,5 @@
 # Registry — Identity and Verification Layer
 
-## Purpose
-
 The Registry (`contracts/Registry.sol`) is the base layer of OpenAID +212. It is the single source of truth for:
 
 - **Who** an address represents (role assignment)
