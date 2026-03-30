@@ -147,13 +147,14 @@ if coordinator is no loger a coordinator thsi privilege goes with it , and also 
 ```mermaid
 flowchart LR
     DONOR["Donor<br/>donateFT()"] -->|mint AID| ESCROW["Crisis Escrow<br/>address(this)"]
-    ESCROW -->|distributeFTToBeneficiary()| BEN["Beneficiary<br/>crisis-verified"]
+    ESCROW -->|distributeFTToBeneficiary&#40;&#41;| BEN["Beneficiary<br/>crisis-verified"]
     COORD["Coordinator<br/>(authority only)"] -.->|authorizes| ESCROW
 
     style ESCROW fill:#fff3e0,stroke:#e65100
     style COORD fill:#f3e5f5,stroke:#4a148c
     style BEN fill:#c8e6c9,stroke:#1b5e20
 ```
+
 
 ## Crisis Pause/Unpause
 
