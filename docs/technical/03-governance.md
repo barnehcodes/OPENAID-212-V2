@@ -168,6 +168,8 @@ struct Crisis {
 | **NGO** | Must have donated ≥ 10x `baseDonationCap` |
 | **GO** | Must have donated ≥ 15x `baseDonationCap` |
 
+These thresholds are computed by the internal helper `_getDonationMultiplier(role)`, which returns 15 for GO, 10 for NGO, 0 for Beneficiary (exempt), and 1 for Donor and PrivateCompany. The same helper is used in both `castVote()` and `registerAsCandidate()` to enforce consistent donation cap requirements.
+
 - **GO vote tracking**: GO votes are stored separately in `goVoteCount` per candidate and `_totalGOVotes[crisisId]` globally, enabling the compression algorithm
 - **Reputation integration**: If ReputationEngine is set, calls `reputationEngine.recordVoteCast(msg.sender)` for GO and NGO voters (feeds into V_i voting activeness component)
 - **Double-vote prevention**: `hasVoted[voter][crisisId][round]` — uses election round to allow re-voting in new rounds after PAUSED → VOTING transitions
@@ -280,6 +282,10 @@ When a crisis enters PAUSED:
 7. **New coordinator distributes remaining escrow** to beneficiaries
 
 A crisis can go through multiple re-election cycles if successive coordinators misbehave. Each cycle increments `electionRound[crisisId]`.
+When `_candidatesList[crisisId]` is deleted, the `_candidateIndexPlusOne` mappings for old candidates become stale (they still hold non-zero values), but this is harmless since `registerAsCandidate()` checks the length of `_candidatesList`, which is now zero, so any lookup against the old index would reference an empty array. New candidates get fresh entries when they re-register.
+
+
+
 
 ## Clean Closure: `closeCrisis(uint256 crisisId)`
 
