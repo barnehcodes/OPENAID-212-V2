@@ -158,16 +158,6 @@ All authority updates are gated by `CRISIS_DECLARATION_ROLE` (Tier 3). Each func
 
 The most sensitive operation is `updateCrisisDeclarationMultisig`: the current Tier-3 multisig authorizes its own replacement. After the call, the old address holds no `CRISIS_DECLARATION_ROLE` and cannot reverse the change.
 
-## View Functions
-
-| Function | Returns | Used By |
-|----------|---------|---------|
-| `getParticipant(addr)` | Full `Participant` struct | All contracts — role checks, existence checks |
-| `isVerifiedValidator(addr)` | `bool` — true if `isVerified && (role == GO \|\| role == NGO)` | ReputationEngine — validator initialization gate |
-| `isCrisisVerifiedBeneficiary(addr, crisisId)` | `bool` — reads `crisisVerification` mapping | DonationManager, Governance — distribution and voting eligibility |
-| `operationalAuthority()` | `address` | Governance, ReputationEngine — Tier-1 caller check |
-| `verificationMultisig()` | `address` | (exposed for transparency) |
-| `crisisDeclarationMultisig()` | `address` | Governance, ReputationEngine — Tier-3 caller check |
 
 ## Access Control Matrix
 
@@ -195,15 +185,3 @@ bytes32 public constant CRISIS_DECLARATION_ROLE   = keccak256("CRISIS_DECLARATIO
 
 `DEFAULT_ADMIN_ROLE` is the OpenZeppelin zero-value role (`0x00`), granted to the deployer in the constructor. After all GOs are registered, the deployer should renounce this role to eliminate the backdoor.
 
-## Custom Errors
-
-| Error | Trigger |
-|-------|---------|
-| `AlreadyRegistered(addr)` | Address already has a Participant record |
-| `NotRegistered(addr)` | Operation on an unregistered address |
-| `InvalidRoleForOpenRegistration(role)` | `registerParticipant()` called with GO or NGO |
-| `NotAnNGO(addr)` | `verifyNGO()` called on a non-NGO address |
-| `NotABeneficiary(addr)` | `verifyBeneficiary()` called on a non-Beneficiary |
-| `AlreadyVerified(addr)` | NGO already verified |
-| `ZeroAddress()` | Zero address supplied to constructor or authority update |
-| `SelfRegistrationRequired(caller, addr)` | `registerNGO()` where `addr != msg.sender` |
