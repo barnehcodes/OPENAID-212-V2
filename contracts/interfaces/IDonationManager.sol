@@ -71,4 +71,53 @@ interface IDonationManager {
     /// @param beneficiary  A registered participant with Role.Beneficiary.
     /// @param amount       Number of AID tokens to mint (must be > 0).
     function directDonateFT(address beneficiary, uint256 amount) external;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Samaritan Score — donor engagement tracking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Confirm tracking of a crisis-bound FT donation, incrementing the donor's Samaritan score.
+    /// @param crisisId  The crisis the donor contributed FT to.
+    function confirmCrisisDonationTracked(uint256 crisisId) external;
+
+    /// @notice Confirm tracking of an in-kind donation, incrementing the donor's Samaritan score.
+    /// @param nftId  The in-kind item the donor committed.
+    function confirmInKindTracked(uint256 nftId) external;
+
+    /// @notice Return the Samaritan score for a donor.
+    /// @param donor  The donor address to query.
+    /// @return       The donor's cumulative Samaritan score.
+    function getSamaritanScore(address donor) external view returns (uint256);
+
+    /// @notice Check if a donor has already tracked their crisis FT donation.
+    /// @param donor     The donor address.
+    /// @param crisisId  The crisis to check.
+    /// @return          True if the donor has already tracked this crisis donation.
+    function hasDonorTrackedCrisis(address donor, uint256 crisisId) external view returns (bool);
+
+    /// @notice Check if a donor has already tracked their in-kind donation.
+    /// @param donor  The donor address.
+    /// @param nftId  The in-kind item ID to check.
+    /// @return       True if the donor has already tracked this in-kind donation.
+    function hasDonorTrackedInKind(address donor, uint256 nftId) external view returns (bool);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FT Beneficiary Confirmation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Beneficiary confirms receipt of FT distributions for a crisis.
+    /// @param crisisId  The crisis the beneficiary received FT from.
+    function confirmFTReceipt(uint256 crisisId) external;
+
+    /// @notice Return the cumulative FT amount received by a beneficiary for a crisis.
+    /// @param beneficiary  The beneficiary address.
+    /// @param crisisId     The crisis to query.
+    /// @return             Total AID tokens received by this beneficiary for this crisis.
+    function getFTReceivedAmount(address beneficiary, uint256 crisisId) external view returns (uint256);
+
+    /// @notice Check if a beneficiary has confirmed FT receipt for a crisis.
+    /// @param beneficiary  The beneficiary address.
+    /// @param crisisId     The crisis to check.
+    /// @return             True if the beneficiary has confirmed receipt.
+    function hasBeneficiaryConfirmedFT(address beneficiary, uint256 crisisId) external view returns (bool);
 }

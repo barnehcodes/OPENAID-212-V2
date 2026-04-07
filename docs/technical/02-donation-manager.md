@@ -193,3 +193,62 @@ The DonationManager tracks crisis activation state via the `activeCrises` mappin
 | `unpauseCrisis(crisisId)` | Governance (on `finalizeMisconductVote()` dismissed or `startVoting()` from PAUSED) | Unfreezes escrow, reopens donations |
 
 
+## Samaritan Score — Donor Engagement Tracking
+
+The Samaritan Score is a simple on-chain counter (`samaritanScore[address]`) that tracks donor engagement. Each time a donor confirms they checked on the outcome of a donation, their score increments by 1. This maps to the EGT parameter **S** (Samaritan incentive) — donors who actively verify their donations receive a higher score, signaling trustworthiness and engagement to the system.
+
+### Functions
+
+Three functions cover three of the four donation paths:
+
+| Function | Donation Path | Precondition |
+|----------|--------------|--------------|
+| `confirmCrisisDonationTracked(crisisId)` | Crisis-bound FT | Caller has `donorContribution > 0` for this crisis; coordinator must be elected OR crisis must be paused |
+| `confirmInKindTracked(nftId)` | Crisis-bound in-kind | Caller is the `donor` on the in-kind record; item status must be ASSIGNED or REDEEMED |
+| `confirmInKindTracked(nftId)` | Direct in-kind | Same as above — works for both crisis-bound and direct in-kind (checks `donor` field, not `crisisId`) |
+
+### Why Direct FT Is Excluded
+
+`directDonateFT()` mints tokens directly to a beneficiary without creating any trackable record (no crisis ID, no NFT ID). Adding a tracking ID would require modifying the function's signature and storage model, which is out of scope. The three covered paths account for all donation types that produce on-chain identifiers.
+
+### State
+
+- `mapping(address => uint256) public samaritanScore` — cumulative score per donor
+- `mapping(address => mapping(uint256 => bool)) public hasTrackedCrisis` — prevents double-tracking per (donor, crisisId)
+- `mapping(address => mapping(uint256 => bool)) public hasTrackedInKind` — prevents double-tracking per (donor, nftId)
+
+### Events
+
+- `CrisisDonationTracked(address indexed donor, uint256 indexed crisisId, uint256 newScore)`
+- `InKindDonationTracked(address indexed donor, uint256 indexed nftId, uint256 newScore)`
+
+## FT Beneficiary Confirmation
+
+FT Beneficiary Confirmation allows beneficiaries to confirm on-chain that they received FT distributions from a crisis escrow. This parallels the existing `confirmInKindRedemption()` flow for in-kind items and maps to the EGT parameter **c** (cooperation signal) — a beneficiary's confirmation closes the accountability loop for fungible token distributions.
+
+### How ftReceived Is Populated
+
+The `ftReceived[beneficiary][crisisId]` mapping is updated automatically inside `distributeFTToBeneficiary()`. Each time the coordinator distributes FT to a beneficiary, the amount is added to their cumulative total:
+
+```solidity
+ftReceived[beneficiary][crisisId] += amount;
+```
+
+This means a beneficiary who receives multiple distributions within the same crisis accumulates a single total, and their confirmation covers all distributions at once.
+
+### Confirmation Function
+
+`confirmFTReceipt(uint256 crisisId)`:
+1. Verifies the caller is a registered Beneficiary (via Registry lookup)
+2. Checks `ftReceived[msg.sender][crisisId] > 0` — the beneficiary must have received something
+3. Checks `!ftConfirmed[msg.sender][crisisId]` — prevents double-confirmation
+4. Sets `ftConfirmed` to true and emits `FTReceiptConfirmed` with the cumulative amount
+
+### State
+
+- `mapping(address => mapping(uint256 => uint256)) public ftReceived` — cumulative FT received per (beneficiary, crisisId), populated by `distributeFTToBeneficiary()`
+- `mapping(address => mapping(uint256 => bool)) public ftConfirmed` — whether the beneficiary has confirmed receipt
+
+### Events
+
+- `FTReceiptConfirmed(address indexed beneficiary, uint256 indexed crisisId, uint256 amount)`

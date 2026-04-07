@@ -87,6 +87,21 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice Auto-incrementing counter for in-kind item IDs. Starts at 0; first ID is 1.
     uint256 private _nftCounter;
 
+    /// @notice Samaritan score: incremented each time a donor confirms they tracked a donation.
+    mapping(address => uint256) public samaritanScore;
+
+    /// @notice Whether a donor has already tracked their crisis-bound FT donation.
+    mapping(address => mapping(uint256 => bool)) public hasTrackedCrisis;
+
+    /// @notice Whether a donor has already tracked their in-kind donation.
+    mapping(address => mapping(uint256 => bool)) public hasTrackedInKind;
+
+    /// @notice Cumulative FT amount received by a beneficiary for a given crisis.
+    mapping(address => mapping(uint256 => uint256)) public ftReceived;
+
+    /// @notice Whether a beneficiary has confirmed FT receipt for a given crisis.
+    mapping(address => mapping(uint256 => bool)) public ftConfirmed;
+
     // ─────────────────────────────────────────────────────────────────────────
     // Custom errors
     // ─────────────────────────────────────────────────────────────────────────
@@ -145,6 +160,30 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice The crisis is currently paused (frozen escrow, no distributions).
     error CrisisIsPaused(uint256 crisisId);
 
+    /// @notice Caller has not donated FT to this crisis.
+    error NotDonorForCrisis(address caller, uint256 crisisId);
+
+    /// @notice Caller is not the donor of this in-kind item.
+    error NotDonorOfItem(address caller, uint256 nftId);
+
+    /// @notice Donor has already tracked this crisis donation.
+    error AlreadyTrackedCrisis(address caller, uint256 crisisId);
+
+    /// @notice Donor has already tracked this in-kind donation.
+    error AlreadyTrackedInKind(address caller, uint256 nftId);
+
+    /// @notice Crisis has no coordinator yet and is not paused — distribution hasn't started.
+    error CrisisNotYetDistributing(uint256 crisisId);
+
+    /// @notice In-kind item is still PENDING — not yet assigned or delivered.
+    error InKindNotYetAssigned(uint256 nftId);
+
+    /// @notice Beneficiary has not received any FT for this crisis.
+    error NothingToConfirm(address caller, uint256 crisisId);
+
+    /// @notice Beneficiary has already confirmed FT receipt for this crisis.
+    error AlreadyConfirmedFT(address caller, uint256 crisisId);
+
     // ─────────────────────────────────────────────────────────────────────────
     // Events
     // ─────────────────────────────────────────────────────────────────────────
@@ -163,6 +202,9 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     event FacilityDeliveryConfirmed(uint256 indexed nftId, address indexed facility, address indexed beneficiary);
     event CrisisPaused(uint256 indexed crisisId);
     event CrisisUnpaused(uint256 indexed crisisId);
+    event CrisisDonationTracked(address indexed donor, uint256 indexed crisisId, uint256 newScore);
+    event InKindDonationTracked(address indexed donor, uint256 indexed nftId, uint256 newScore);
+    event FTReceiptConfirmed(address indexed beneficiary, uint256 indexed crisisId, uint256 amount);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
@@ -449,6 +491,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         if (amount > crisisEscrow[crisisId]) revert InsufficientEscrow(crisisId, amount);
 
         crisisEscrow[crisisId] -= amount;
+        ftReceived[beneficiary][crisisId] += amount;
         _transfer(address(this), beneficiary, amount);
         emit FTDistributed(crisisId, msg.sender, beneficiary, amount);
     }
@@ -552,5 +595,101 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice Return the total number of in-kind donations minted.
     function nftTotalSupply() external view returns (uint256) {
         return _nftCounter;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Samaritan Score — donor engagement tracking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Confirm tracking of a crisis-bound FT donation, incrementing the donor's Samaritan score.
+    /// @dev    Donor must have contributed to the crisis and distribution must have started
+    ///         (coordinator elected or crisis paused). Each (donor, crisis) pair can only be tracked once.
+    /// @param crisisId  The crisis the donor contributed FT to.
+    function confirmCrisisDonationTracked(uint256 crisisId) external {
+        if (donorContribution[msg.sender][crisisId] == 0) revert NotDonorForCrisis(msg.sender, crisisId);
+        if (hasTrackedCrisis[msg.sender][crisisId]) revert AlreadyTrackedCrisis(msg.sender, crisisId);
+        if (crisisCoordinator[crisisId] == address(0) && !crisisPaused[crisisId]) {
+            revert CrisisNotYetDistributing(crisisId);
+        }
+
+        hasTrackedCrisis[msg.sender][crisisId] = true;
+        samaritanScore[msg.sender] += 1;
+        emit CrisisDonationTracked(msg.sender, crisisId, samaritanScore[msg.sender]);
+    }
+
+    /// @notice Confirm tracking of an in-kind donation, incrementing the donor's Samaritan score.
+    /// @dev    Covers both crisis-bound and direct in-kind donations. The item must have
+    ///         progressed past PENDING (ASSIGNED or REDEEMED). Each (donor, nftId) pair
+    ///         can only be tracked once.
+    /// @param nftId  The in-kind item the donor committed.
+    function confirmInKindTracked(uint256 nftId) external {
+        InKindDonation storage donation = inKindDonations[nftId];
+        if (donation.nftId == 0) revert NFTNotFound(nftId);
+        if (donation.donor != msg.sender) revert NotDonorOfItem(msg.sender, nftId);
+        if (hasTrackedInKind[msg.sender][nftId]) revert AlreadyTrackedInKind(msg.sender, nftId);
+        if (donation.status == Status.PENDING) revert InKindNotYetAssigned(nftId);
+
+        hasTrackedInKind[msg.sender][nftId] = true;
+        samaritanScore[msg.sender] += 1;
+        emit InKindDonationTracked(msg.sender, nftId, samaritanScore[msg.sender]);
+    }
+
+    /// @notice Return the Samaritan score for a donor.
+    /// @param donor  The donor address to query.
+    /// @return       The donor's cumulative Samaritan score.
+    function getSamaritanScore(address donor) external view returns (uint256) {
+        return samaritanScore[donor];
+    }
+
+    /// @notice Check if a donor has already tracked their crisis FT donation.
+    /// @param donor     The donor address.
+    /// @param crisisId  The crisis to check.
+    /// @return          True if the donor has already tracked this crisis donation.
+    function hasDonorTrackedCrisis(address donor, uint256 crisisId) external view returns (bool) {
+        return hasTrackedCrisis[donor][crisisId];
+    }
+
+    /// @notice Check if a donor has already tracked their in-kind donation.
+    /// @param donor  The donor address.
+    /// @param nftId  The in-kind item ID to check.
+    /// @return       True if the donor has already tracked this in-kind donation.
+    function hasDonorTrackedInKind(address donor, uint256 nftId) external view returns (bool) {
+        return hasTrackedInKind[donor][nftId];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FT Beneficiary Confirmation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Beneficiary confirms receipt of FT distributions for a crisis.
+    /// @dev    Beneficiary must have received FT via distributeFTToBeneficiary().
+    ///         Each (beneficiary, crisis) pair can only be confirmed once.
+    /// @param crisisId  The crisis the beneficiary received FT from.
+    function confirmFTReceipt(uint256 crisisId) external {
+        IRegistry.Participant memory p = registry.getParticipant(msg.sender);
+        if (!p.exists || p.role != IRegistry.Role.Beneficiary) {
+            revert NotRegisteredBeneficiary(msg.sender);
+        }
+        if (ftReceived[msg.sender][crisisId] == 0) revert NothingToConfirm(msg.sender, crisisId);
+        if (ftConfirmed[msg.sender][crisisId]) revert AlreadyConfirmedFT(msg.sender, crisisId);
+
+        ftConfirmed[msg.sender][crisisId] = true;
+        emit FTReceiptConfirmed(msg.sender, crisisId, ftReceived[msg.sender][crisisId]);
+    }
+
+    /// @notice Return the cumulative FT amount received by a beneficiary for a crisis.
+    /// @param beneficiary  The beneficiary address.
+    /// @param crisisId     The crisis to query.
+    /// @return             Total AID tokens received by this beneficiary for this crisis.
+    function getFTReceivedAmount(address beneficiary, uint256 crisisId) external view returns (uint256) {
+        return ftReceived[beneficiary][crisisId];
+    }
+
+    /// @notice Check if a beneficiary has confirmed FT receipt for a crisis.
+    /// @param beneficiary  The beneficiary address.
+    /// @param crisisId     The crisis to check.
+    /// @return             True if the beneficiary has confirmed receipt.
+    function hasBeneficiaryConfirmedFT(address beneficiary, uint256 crisisId) external view returns (bool) {
+        return ftConfirmed[beneficiary][crisisId];
     }
 }
