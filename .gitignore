@@ -28,6 +28,9 @@ besu/config/qbft-config.json
 # Scenario test results
 scenario-results/
 
+# Local Python venv (e.g. doc tooling) — never commit
+.venv_docx/
+
 # Internal files
 CLAUDE.md
 CONTRACT-CHANGES-REFERENCE.md
