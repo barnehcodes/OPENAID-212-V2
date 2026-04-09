@@ -102,6 +102,12 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice Whether a beneficiary has confirmed FT receipt for a given crisis.
     mapping(address => mapping(uint256 => bool)) public ftConfirmed;
 
+    /// @notice Cumulative direct FT amount donated by a donor to a specific beneficiary.
+    mapping(address => mapping(address => uint256)) public directFTDonated;
+
+    /// @notice Whether a donor has already tracked their direct FT donation to a beneficiary.
+    mapping(address => mapping(address => bool)) public hasTrackedDirectFT;
+
     // ─────────────────────────────────────────────────────────────────────────
     // Custom errors
     // ─────────────────────────────────────────────────────────────────────────
@@ -184,6 +190,12 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @notice Beneficiary has already confirmed FT receipt for this crisis.
     error AlreadyConfirmedFT(address caller, uint256 crisisId);
 
+    /// @notice Caller has not donated direct FT to this beneficiary.
+    error NoDirectFTToBeneficiary(address caller, address beneficiary);
+
+    /// @notice Caller has already tracked their direct FT donation to this beneficiary.
+    error AlreadyTrackedDirectFT(address caller, address beneficiary);
+
     // ─────────────────────────────────────────────────────────────────────────
     // Events
     // ─────────────────────────────────────────────────────────────────────────
@@ -205,6 +217,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     event CrisisDonationTracked(address indexed donor, uint256 indexed crisisId, uint256 newScore);
     event InKindDonationTracked(address indexed donor, uint256 indexed nftId, uint256 newScore);
     event FTReceiptConfirmed(address indexed beneficiary, uint256 indexed crisisId, uint256 amount);
+    event DirectFTDonationTracked(address indexed donor, address indexed beneficiary, uint256 newScore);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Constructor
@@ -350,6 +363,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         }
 
         _mint(beneficiary, amount);
+        directFTDonated[msg.sender][beneficiary] += amount;
         emit DirectFTDonation(msg.sender, beneficiary, amount);
     }
 
@@ -691,5 +705,42 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     /// @return             True if the beneficiary has confirmed receipt.
     function hasBeneficiaryConfirmedFT(address beneficiary, uint256 crisisId) external view returns (bool) {
         return ftConfirmed[beneficiary][crisisId];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct FT Donation Tracking — Samaritan Score
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Confirm tracking of a direct FT donation, incrementing the donor's Samaritan score.
+    /// @dev    Donor must have previously called directDonateFT() for this beneficiary.
+    ///         Each (donor, beneficiary) pair can only be tracked once.
+    /// @param beneficiary  The beneficiary the donor sent direct FT to.
+    function confirmDirectFTTracked(address beneficiary) external {
+        if (directFTDonated[msg.sender][beneficiary] == 0) {
+            revert NoDirectFTToBeneficiary(msg.sender, beneficiary);
+        }
+        if (hasTrackedDirectFT[msg.sender][beneficiary]) {
+            revert AlreadyTrackedDirectFT(msg.sender, beneficiary);
+        }
+
+        hasTrackedDirectFT[msg.sender][beneficiary] = true;
+        samaritanScore[msg.sender] += 1;
+        emit DirectFTDonationTracked(msg.sender, beneficiary, samaritanScore[msg.sender]);
+    }
+
+    /// @notice Return the cumulative direct FT amount donated by a donor to a beneficiary.
+    /// @param donor        The donor address.
+    /// @param beneficiary  The beneficiary address.
+    /// @return             Total AID tokens donated directly to this beneficiary.
+    function getDirectFTDonated(address donor, address beneficiary) external view returns (uint256) {
+        return directFTDonated[donor][beneficiary];
+    }
+
+    /// @notice Check if a donor has already tracked their direct FT donation to a beneficiary.
+    /// @param donor        The donor address.
+    /// @param beneficiary  The beneficiary address.
+    /// @return             True if the donor has already tracked this direct FT donation.
+    function hasDonorTrackedDirectFT(address donor, address beneficiary) external view returns (bool) {
+        return hasTrackedDirectFT[donor][beneficiary];
     }
 }

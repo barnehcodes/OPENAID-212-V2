@@ -120,4 +120,24 @@ interface IDonationManager {
     /// @param crisisId     The crisis to check.
     /// @return             True if the beneficiary has confirmed receipt.
     function hasBeneficiaryConfirmedFT(address beneficiary, uint256 crisisId) external view returns (bool);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Direct FT Donation Tracking — Samaritan Score
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Confirm tracking of a direct FT donation, incrementing the donor's Samaritan score.
+    /// @param beneficiary  The beneficiary the donor sent direct FT to.
+    function confirmDirectFTTracked(address beneficiary) external;
+
+    /// @notice Return the cumulative direct FT amount donated by a donor to a beneficiary.
+    /// @param donor        The donor address.
+    /// @param beneficiary  The beneficiary address.
+    /// @return             Total AID tokens donated directly to this beneficiary.
+    function getDirectFTDonated(address donor, address beneficiary) external view returns (uint256);
+
+    /// @notice Check if a donor has already tracked their direct FT donation to a beneficiary.
+    /// @param donor        The donor address.
+    /// @param beneficiary  The beneficiary address.
+    /// @return             True if the donor has already tracked this direct FT donation.
+    function hasDonorTrackedDirectFT(address donor, address beneficiary) external view returns (bool);
 }

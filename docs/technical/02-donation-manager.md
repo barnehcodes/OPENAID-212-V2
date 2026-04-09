@@ -206,10 +206,11 @@ Three functions cover three of the four donation paths:
 | `confirmCrisisDonationTracked(crisisId)` | Crisis-bound FT | Caller has `donorContribution > 0` for this crisis; coordinator must be elected OR crisis must be paused |
 | `confirmInKindTracked(nftId)` | Crisis-bound in-kind | Caller is the `donor` on the in-kind record; item status must be ASSIGNED or REDEEMED |
 | `confirmInKindTracked(nftId)` | Direct in-kind | Same as above — works for both crisis-bound and direct in-kind (checks `donor` field, not `crisisId`) |
+| `confirmDirectFTTracked(beneficiary)` | Direct FT | Caller has `directFTDonated > 0` for this beneficiary |
 
-### Why Direct FT Is Excluded
+### Why Direct FT Was Previously Excluded
 
-`directDonateFT()` mints tokens directly to a beneficiary without creating any trackable record (no crisis ID, no NFT ID). Adding a tracking ID would require modifying the function's signature and storage model, which is out of scope. The three covered paths account for all donation types that produce on-chain identifiers.
+`directDonateFT()` originally minted tokens directly to a beneficiary without creating any trackable record. This gap has now been closed — see the **Direct FT Donation Tracking** section below. All four donation paths are now covered by the Samaritan Score.
 
 ### State
 
@@ -252,3 +253,30 @@ This means a beneficiary who receives multiple distributions within the same cri
 ### Events
 
 - `FTReceiptConfirmed(address indexed beneficiary, uint256 indexed crisisId, uint256 amount)`
+
+## Direct FT Donation Tracking
+
+### What It Is
+
+Direct FT Donation Tracking extends the Samaritan Score to cover the fourth and final donation path — `directDonateFT()`. Previously, direct FT donations were excluded because they produced no on-chain identifier (no crisis ID, no NFT ID). This feature adds a cumulative tracking mapping keyed by `(donor, beneficiary)`, allowing donors to confirm engagement with their direct FT donations.
+
+### Why It Was Added
+
+The Samaritan Score originally covered three of four donation paths (crisis FT, crisis in-kind, direct in-kind). Direct FT was the gap. By adding `directFTDonated` accumulation inside `directDonateFT()` and a `confirmDirectFTTracked()` function, all four donation paths now contribute to the Samaritan Score, giving a complete picture of donor engagement.
+
+### Mapping Structure
+
+- `mapping(address => mapping(address => uint256)) public directFTDonated` — cumulative AID tokens donated by a donor to a specific beneficiary via `directDonateFT()`. Updated automatically on each call.
+- `mapping(address => mapping(address => bool)) public hasTrackedDirectFT` — prevents double-tracking per (donor, beneficiary) pair.
+
+### Confirm Function
+
+`confirmDirectFTTracked(address beneficiary)`:
+1. Checks `directFTDonated[msg.sender][beneficiary] > 0` — the donor must have donated
+2. Checks `!hasTrackedDirectFT[msg.sender][beneficiary]` — prevents double-tracking
+3. Sets `hasTrackedDirectFT` to true, increments `samaritanScore[msg.sender]`
+4. Emits `DirectFTDonationTracked(donor, beneficiary, newScore)`
+
+### Events
+
+- `DirectFTDonationTracked(address indexed donor, address indexed beneficiary, uint256 newScore)`
