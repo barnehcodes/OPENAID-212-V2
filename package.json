@@ -33,7 +33,9 @@
     "deploy:demo": "hardhat run scripts/deploy-demo.ts --network besu",
     "scenario:besu": "hardhat run scripts/scenario.ts --network besu",
     "scenario:demo": "hardhat run scripts/scenario.ts --network besu",
-    "epoch:update": "hardhat run scripts/epoch-cron.ts --network besu"
+    "epoch:update": "hardhat run scripts/epoch-cron.ts --network besu",
+    "frontend:dev": "cd frontend && bun run dev",
+    "frontend:build": "cd frontend && bun run build"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.6.1"
