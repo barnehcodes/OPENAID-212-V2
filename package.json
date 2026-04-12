@@ -29,6 +29,7 @@
     "test:gas": "REPORT_GAS=true hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts",
     "deploy:besu": "hardhat run scripts/deploy.ts --network besu",
+    "seed:besu": "hardhat run scripts/seed-test-accounts.ts --network besu",
     "clean": "hardhat clean",
     "deploy:demo": "hardhat run scripts/deploy-demo.ts --network besu",
     "scenario:besu": "hardhat run scripts/scenario.ts --network besu",

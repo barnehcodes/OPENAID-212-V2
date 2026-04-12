@@ -237,4 +237,61 @@ This gives the UI a distinct Moroccan cultural identity without being heavy-hand
 
 ---
 
+## Phase 9 — UI Preview Mode, Contract/UI Alignment, Test-Machine Bring-Up ✅
+
+### UI preview mode (env flag)
+`frontend/.env.local` → `NEXT_PUBLIC_UI_PREVIEW`:
+- `true` — every dashboard route is reachable without a wallet. `useScaffoldContractRead/Write` return fixtures, `useParticipant` reads from `MockRoleProvider` (localStorage-backed). Use this for UI review only.
+- `false` (default) — real wallet + contracts on Besu.
+
+Key files:
+- `frontend/lib/previewMode.ts` — flag
+- `frontend/lib/mockData.ts` + `frontend/lib/mockContractResponses.ts` — fixtures keyed by `(contractName, functionName)`
+- `frontend/components/providers/MockRoleProvider.tsx`
+- `frontend/hooks/scaffold-eth/useScaffoldContract{Read,Write}.ts` — short-circuit in preview
+- `frontend/hooks/useParticipant.ts` — reads mock role in preview, otherwise reads `Registry.getParticipant` and maps the **named struct** `{ addr, role, exists, isVerified, registeredAt }` to its fields (viem returns named-component structs as an object, not a tuple — do **not** index `data[0]`).
+
+### Continuous-flow donation window
+Donations are open in every crisis phase except **CLOSED**. Contract enforcement:
+- `DonationManager.activeCrises[crisisId]` is set `true` in `activateCrisis` (called from `Governance.declareCrisis`) and set `false` only in `deactivateCrisis` (called from `Governance.closeCrisis`).
+- `pauseCrisis()` flips `crisisPaused`, **never** touches `activeCrises`. Distribution (`distributeFTToBeneficiary`, `assignInKindToBeneficiary`) is gated on `!crisisPaused`.
+- `Governance.closeCrisis()` calls `donationManager.deactivateCrisis(crisisId)` so closing is the single event that stops donations.
+
+UI mirrors this: `frontend/components/donor/DonateForm.tsx` locks only when `phase === "CLOSED"`. Coordinator distribute/assign forms lock unless `phase` is ACTIVE or REVIEW.
+
+Design doc reflecting this: `docs/technical/02-donation-manager.md` (see **Donation Window vs. Distribution Window** table).
+
+### Bring-up on a fresh machine
+1. **Besu keys + network**
+   - `cd besu && bash scripts/generate-keys.sh` (generates `genesis.json`, `qbft-config.json`, per-node keys — all gitignored by design).
+   - **Git Bash / Windows:** script already exports `MSYS_NO_PATHCONV=1` and `MSYS2_ARG_CONV_EXCL='*'`. If you hit `sh: 1: C:/Program: not found`, MSYS is mangling container paths — the exports fix it.
+   - `cd besu && docker compose up -d` — 4 nodes + Prometheus + Grafana. RPC on `localhost:18545`, chain id `1337`, gasPrice = 7.
+2. **Contracts**
+   - `npm run deploy:besu` → writes `deployments/addresses.json`.
+   - Sync addresses into `frontend/contracts/deployedContracts.ts` (4 lines) and re-export ABIs:
+     ```bash
+     for c in Registry DonationManager Governance ReputationEngine; do
+       node -e "const a=require('./artifacts/contracts/$c.sol/$c.json');require('fs').writeFileSync('frontend/contracts/abis/$c.json',JSON.stringify(a.abi,null,2))"
+     done
+     ```
+3. **Seed pre-verified GO/NGO wallets (for screenshots)**
+   - `npm run seed:besu` runs `scripts/seed-test-accounts.ts`.
+   - Funds & registers 4 test wallets using fixed keys (0x11…11, 0x22…22, 0x33…33, 0x44…44): 2 GOs (auto-verified on `registerGO`) and 2 NGOs (self-register, then verified by Tier-2 = deployer).
+   - Writes the list to `deployments/test-accounts.json`. Import the private keys into MetaMask to sign in as each role.
+   - Deployer account `0xFE3B…bd73` (key `0x8f2a…be63`) holds all three tier-authorities — use it to declare crises, verify participants, close crises.
+4. **Frontend**
+   - `NEXT_PUBLIC_UI_PREVIEW=false` in `frontend/.env.local` (or delete the file).
+   - `cd frontend && npm install && npm run dev`.
+
+### Gotchas seen during bring-up
+- **MetaMask must have the Besu network added manually** (RPC `http://localhost:18545`, chain id `1337`, currency `ETH`).
+- **Redirect-during-render bug** in `frontend/app/register/page.tsx`: `router.replace` used to be called inline. It's now wrapped in `useEffect` — keep it that way. Any redirect based on `useParticipant` must go through `useEffect`.
+- **Stale ABIs** after contract edits: always re-run the ABI export loop above after `npx hardhat compile`.
+- **Quorum-test-network conflict**: if `rpcnode` / `quorum-test-network-validator*` containers are running from an unrelated project, they bind the Besu ports. `docker stop` them before `docker compose up -d` in `besu/`.
+
+### Gitignore posture (branch `test`)
+Internal docs (`CLAUDE.md`, `docs/audit/`, `docs/design/`, `deployments/`, `scenario-results/`, `CONTRACT-CHANGES-REFERENCE.md`) are now tracked so the test machine has context. Still ignored: `node_modules`, `.env`, Hardhat build output, `besu/genesis.json`, `besu/config/qbft-config.json`, `besu/config/networkFiles/`, `besu/config/node-*/data/`, `.claude/`.
+
+---
+
 
