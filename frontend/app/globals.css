@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* OpenAID color palette */
+  --color-openaid-cream: #EFECE3;
+  --color-openaid-blue: #8FABD4;
+  --color-openaid-deep-blue: #4A70A9;
+  --color-openaid-black: #000000;
+  --color-openaid-dim-text: #5A5A5A;
+  --color-openaid-mid-gray: #8A8A8A;
+  --color-openaid-border: #DDD8CC;
+  --color-openaid-card-bg: #F7F5EF;
+
+  /* Status colors */
+  --color-status-green: #4CAF8B;
+  --color-status-red: #D44040;
+  --color-status-amber: #D4A03A;
+
+  /* Fonts */
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+  --font-heading: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* shadcn/ui theme variables mapped to OpenAID */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* OpenAID light theme — map shadcn variables to our palette */
+  --background: #EFECE3;
+  --foreground: #1a1a1a;
+  --card: #F7F5EF;
+  --card-foreground: #1a1a1a;
+  --popover: #F7F5EF;
+  --popover-foreground: #1a1a1a;
+  --primary: #4A70A9;
+  --primary-foreground: #ffffff;
+  --secondary: #8FABD4;
+  --secondary-foreground: #1a1a1a;
+  --muted: #DDD8CC;
+  --muted-foreground: #5A5A5A;
+  --accent: #8FABD4;
+  --accent-foreground: #1a1a1a;
+  --destructive: #D44040;
+  --border: #DDD8CC;
+  --input: #DDD8CC;
+  --ring: #4A70A9;
+  --chart-1: #4A70A9;
+  --chart-2: #4CAF8B;
+  --chart-3: #D4A03A;
+  --chart-4: #8FABD4;
+  --chart-5: #D44040;
+  --radius: 0.5rem;
+  --sidebar: #0D0D0D;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #4A70A9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #4A70A9;
+}
+
+.dark {
+  --background: #0D0D0D;
+  --foreground: #EFECE3;
+  --card: #1a1a1a;
+  --card-foreground: #EFECE3;
+  --popover: #1a1a1a;
+  --popover-foreground: #EFECE3;
+  --primary: #8FABD4;
+  --primary-foreground: #0D0D0D;
+  --secondary: #4A70A9;
+  --secondary-foreground: #EFECE3;
+  --muted: #2a2a2a;
+  --muted-foreground: #8A8A8A;
+  --accent: #4A70A9;
+  --accent-foreground: #EFECE3;
+  --destructive: #D44040;
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #8FABD4;
+  --chart-1: #8FABD4;
+  --chart-2: #4CAF8B;
+  --chart-3: #D4A03A;
+  --chart-4: #4A70A9;
+  --chart-5: #D44040;
+  --sidebar: #0D0D0D;
+  --sidebar-foreground: #EFECE3;
+  --sidebar-primary: #8FABD4;
+  --sidebar-primary-foreground: #0D0D0D;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #EFECE3;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #8FABD4;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* News ticker infinite scroll */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Liquid heart fill animation */
+@keyframes liquidFill {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-liquid {
+  animation: liquidFill 3s ease-in-out infinite;
+}
+
+/* Animated counter fade-in */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count-up {
+  animation: countUp 0.6s ease-out forwards;
+}
