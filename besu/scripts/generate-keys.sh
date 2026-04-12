@@ -3,6 +3,12 @@
 # Run this ONCE during initial setup.
 set -euo pipefail
 
+# Disable MSYS/Git-Bash path auto-conversion on Windows. Without this, args like
+# /opt/besu/bin/besu get rewritten to C:/Program Files/Git/opt/besu/bin/besu
+# before reaching docker, and the container fails to find the binary.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BESU_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_DIR="$BESU_DIR/config"

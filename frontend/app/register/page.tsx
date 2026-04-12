@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -123,7 +123,10 @@ function RegisterContent() {
   const isPending = regPending || ngoPending;
 
   // If already registered, redirect (skip in preview so user can switch roles)
-  if (!IS_PREVIEW && participant?.isRegistered && step !== "done") {
+  const alreadyRegistered =
+    !IS_PREVIEW && !!participant?.isRegistered && step !== "done";
+  useEffect(() => {
+    if (!alreadyRegistered) return;
     const roleRoutes: Record<string, string> = {
       Donor: "/dashboard/donor",
       Beneficiary: "/dashboard/beneficiary",
@@ -131,9 +134,9 @@ function RegisterContent() {
       GO: "/dashboard/go",
       PrivateCompany: "/dashboard/donor",
     };
-    router.replace(roleRoutes[participant.role] ?? "/dashboard");
-    return null;
-  }
+    router.replace(roleRoutes[participant!.role] ?? "/dashboard");
+  }, [alreadyRegistered, participant, router]);
+  if (alreadyRegistered) return null;
 
   const handleSelectRole = (role: typeof roles[number]) => {
     setSelectedRole(role);

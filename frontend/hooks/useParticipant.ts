@@ -63,16 +63,20 @@ export function useParticipant() {
     };
   }
 
-  // getParticipant returns a tuple: (address, role, name, isVerified)
+  // getParticipant returns struct Participant { addr, role, exists, isVerified, registeredAt }
+  // viem returns named-component structs as an object, not a tuple.
+  const raw = data as
+    | { addr: string; role: number | bigint; exists: boolean; isVerified: boolean; registeredAt: bigint }
+    | undefined;
   const participant: Participant | null =
-    data && isConnected && address
+    raw && isConnected && address
       ? {
-          addr: (data as any)[0] as string,
-          roleId: Number((data as any)[1]),
-          role: roleMap[Number((data as any)[1])] ?? "Donor",
-          name: (data as any)[2] as string,
-          isVerified: (data as any)[3] as boolean,
-          isRegistered: (data as any)[0] !== "0x0000000000000000000000000000000000000000",
+          addr: raw.addr,
+          roleId: Number(raw.role),
+          role: roleMap[Number(raw.role)] ?? "Donor",
+          name: "",
+          isVerified: raw.isVerified,
+          isRegistered: raw.exists,
         }
       : null;
 
