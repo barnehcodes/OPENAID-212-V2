@@ -42,7 +42,8 @@ The `decimals()` function returns `0`, consistent with the system's integer-only
 - **State updates**:
   - `crisisEscrow[crisisId] += amount`
   - `donorContribution[msg.sender][crisisId] += amount`
-- **Preconditions**: Crisis must be active, amount > 0, caller registered
+- **Preconditions**: Crisis must not be CLOSED, amount > 0, caller registered
+- **Donation window**: Open across the entire crisis lifecycle except CLOSED — DECLARED, VOTING, ACTIVE, REVIEW, and PAUSED all accept donations (continuous-flow escrow). Only `closeCrisis()` stops new donations.
 - **Voting power**: `donorContribution` is read by Governance to enforce per-role donation caps for voting eligibility
 
 ### 2. Direct FT Donations: `directDonateFT(address beneficiary, uint256 amount)`
@@ -164,17 +165,17 @@ When a misconduct investigation begins or misconduct is confirmed, the escrow is
 
 - **Caller**: Governance contract only
 - **Effects**:
-  - `crisisPaused[crisisId] = true`
-  - `activeCrises[crisisId] = false` (stops new donations)
+  - `crisisPaused[crisisId] = true` (freezes distribution and in-kind assignment)
   - `crisisCoordinator[crisisId] = address(0)` (revokes distribution authority)
+  - `activeCrises[crisisId]` is **untouched** — donations stay open during PAUSED (continuous-flow escrow)
 - **Events**: `CrisisPaused(crisisId)`
 
 ### `unpauseCrisis(uint256 crisisId)`
 
 - **Caller**: Governance contract only
 - **Effects**:
-  - `crisisPaused[crisisId] = false`
-  - `activeCrises[crisisId] = true` (reopens donations)
+  - `crisisPaused[crisisId] = false` (unfreezes distribution)
+  - `activeCrises[crisisId] = true` (idempotent — donations were already open during PAUSED)
 - **Events**: `CrisisUnpaused(crisisId)`
 
 ### Pause Checks
@@ -183,14 +184,27 @@ Both `distributeFTToBeneficiary()` and `assignInKindToBeneficiary()` check `cris
 
 ## Crisis Lifecycle Integration
 
-The DonationManager tracks crisis activation state via the `activeCrises` mapping. Governance controls this:
+The DonationManager tracks the donation window via the `activeCrises` mapping and the distribution freeze via `crisisPaused`. The two are independent: donations stay open through every phase except CLOSED, while distributions can be frozen mid-lifecycle (PAUSED) without blocking new contributions.
 
 | Function | Called By | Effect |
 |----------|----------|--------|
-| `activateCrisis(crisisId)` | Governance (on `declareCrisis()`) | Opens donations for this crisis |
-| `deactivateCrisis(crisisId)` | Governance (on `finalizeElection()`) | Closes donations — coordinator now distributes |
-| `pauseCrisis(crisisId)` | Governance (on `initiateMisconductVote()` or `finalizeMisconductVote()` confirmed) | Freezes escrow, stops donations, revokes coordinator |
-| `unpauseCrisis(crisisId)` | Governance (on `finalizeMisconductVote()` dismissed or `startVoting()` from PAUSED) | Unfreezes escrow, reopens donations |
+| `activateCrisis(crisisId)` | Governance (on `declareCrisis()`) | Opens donations the moment a crisis is declared |
+| `deactivateCrisis(crisisId)` | Governance (on `closeCrisis()`) | Stops new donations. Existing escrow remains and can be redirected via `carryOverEscrow()` to an open crisis |
+| `pauseCrisis(crisisId)` | Governance (on `initiateMisconductVote()` or confirmed misconduct) | Freezes distribution, revokes coordinator. **Does not** stop donations |
+| `unpauseCrisis(crisisId)` | Governance (on dismissed misconduct or `startVoting()` from PAUSED) | Unfreezes distribution. Donations were never closed |
+
+### Donation Window vs. Distribution Window
+
+| Phase    | Donations open? | Distribution allowed? |
+|----------|-----------------|-----------------------|
+| DECLARED | yes             | no (no coordinator yet) |
+| VOTING   | yes             | no (no coordinator yet) |
+| ACTIVE   | yes             | yes |
+| REVIEW   | yes             | yes |
+| PAUSED   | yes             | no (frozen pending re-election or misconduct outcome) |
+| CLOSED   | no              | no |
+
+This is the continuous-flow escrow model: the public can keep contributing while a crisis is being investigated, re-electing a coordinator, or wrapping up. Leftover escrow at CLOSE is never stranded — Tier-3 governance can redirect it to any open crisis through `Governance.redirectLeftoverFunds()` → `DonationManager.carryOverEscrow()`.
 
 
 ## Samaritan Score — Donor Engagement Tracking

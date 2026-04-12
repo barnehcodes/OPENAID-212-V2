@@ -15,10 +15,10 @@ import { Users } from "lucide-react";
 
 // In production, this data comes from indexing contract events
 const mockBeneficiaries = [
-  { address: "0x1234567890abcdef1234567890abcdef12345678", verified: true, ftReceived: "1.5 ETH", ftConfirmed: true, inKind: "2 items" },
-  { address: "0xabcdef1234567890abcdef1234567890abcdef12", verified: true, ftReceived: "0.8 ETH", ftConfirmed: false, inKind: "1 item" },
-  { address: "0x9876543210fedcba9876543210fedcba98765432", verified: true, ftReceived: "2.0 ETH", ftConfirmed: true, inKind: "—" },
-  { address: "0xfedcba9876543210fedcba9876543210fedcba98", verified: false, ftReceived: "—", ftConfirmed: false, inKind: "—" },
+  { address: "0x1234567890abcdef1234567890abcdef12345678", verified: true, ftReceived: "1.5 AID", ftConfirmed: true, inKind: "2 items" },
+  { address: "0xabcdef1234567890abcdef1234567890abcdef12", verified: true, ftReceived: "0.8 AID", ftConfirmed: false, inKind: "1 item" },
+  { address: "0x9876543210fedcba9876543210fedcba98765432", verified: true, ftReceived: "2.0 AID", ftConfirmed: true, inKind: "-" },
+  { address: "0xfedcba9876543210fedcba9876543210fedcba98", verified: false, ftReceived: "-", ftConfirmed: false, inKind: "-" },
 ];
 
 export function BeneficiaryLedger() {

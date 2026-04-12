@@ -780,10 +780,10 @@ describe("DonationManager", function () {
   // ═══════════════════════════════════════════════════════════════════════════
 
   describe("pauseCrisis() / unpauseCrisis()", function () {
-    it("governance can pause a crisis", async function () {
+    it("governance can pause a crisis (distributions frozen, donations still open)", async function () {
       await dm.connect(governance).pauseCrisis(CRISIS_ID);
       expect(await dm.crisisPaused(CRISIS_ID)).to.be.true;
-      expect(await dm.activeCrises(CRISIS_ID)).to.be.false;
+      expect(await dm.activeCrises(CRISIS_ID)).to.be.true; // continuous-flow: donations stay open
       expect(await dm.crisisCoordinator(CRISIS_ID)).to.equal(ethers.ZeroAddress);
     });
 

@@ -24,7 +24,7 @@ export function DistributeForm({ crisisId, phase }: DistributeFormProps) {
     functionName: "distributeFTToBeneficiary",
   });
 
-  const locked = phase !== "ACTIVE";
+  const locked = phase !== "ACTIVE" && phase !== "REVIEW";
 
   const handleDistribute = async () => {
     if (!beneficiary.trim() || !amount || Number(amount) <= 0) return;
@@ -39,7 +39,7 @@ export function DistributeForm({ crisisId, phase }: DistributeFormProps) {
 
       {locked && (
         <div className="bg-status-amber/10 border border-status-amber/30 rounded-lg px-4 py-3 mb-4 text-sm text-status-amber">
-          Distribution is only available during the ACTIVE phase
+          Distribution is only available during ACTIVE or REVIEW phases
         </div>
       )}
 
@@ -57,7 +57,7 @@ export function DistributeForm({ crisisId, phase }: DistributeFormProps) {
         </div>
 
         <div>
-          <Label className="text-xs text-openaid-mid-gray">Amount (ETH)</Label>
+          <Label className="text-xs text-openaid-mid-gray">Amount (AID)</Label>
           <Input
             type="number"
             step="0.01"
@@ -76,7 +76,7 @@ export function DistributeForm({ crisisId, phase }: DistributeFormProps) {
           onClick={handleDistribute}
         >
           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          Distribute {amount || "0"} ETH
+          Distribute {amount || "0"} AID
         </Button>
       </div>
     </Card>

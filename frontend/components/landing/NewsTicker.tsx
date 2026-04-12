@@ -9,11 +9,11 @@ interface CrisisAlert {
 }
 
 const mockAlerts: CrisisAlert[] = [
-  { id: 1, text: "Al-Haouz Earthquake Relief — Phase ACTIVE — 2,450 ETH distributed", severity: "critical" },
-  { id: 2, text: "Taroudant Flood Response — VOTING in progress — 12 candidates registered", severity: "warning" },
-  { id: 3, text: "Errachidia Drought Monitoring — Under observation — 340 beneficiaries registered", severity: "monitoring" },
-  { id: 4, text: "Chefchaouen Landslide Aid — CLOSED — 890 ETH fully distributed & verified", severity: "monitoring" },
-  { id: 5, text: "Ouarzazate Heat Wave — DECLARED — Awaiting GO vote initiation", severity: "warning" },
+  { id: 1, text: "Al-Haouz Earthquake Relief - Phase ACTIVE - 2,450 AID distributed", severity: "critical" },
+  { id: 2, text: "Taroudant Flood Response - VOTING in progress - 12 candidates registered", severity: "warning" },
+  { id: 3, text: "Errachidia Drought Monitoring - Under observation - 340 beneficiaries registered", severity: "monitoring" },
+  { id: 4, text: "Chefchaouen Landslide Aid - CLOSED - 890 AID fully distributed & verified", severity: "monitoring" },
+  { id: 5, text: "Ouarzazate Heat Wave - DECLARED - Awaiting GO vote initiation", severity: "warning" },
 ];
 
 const severityColor: Record<CrisisAlert["severity"], string> = {

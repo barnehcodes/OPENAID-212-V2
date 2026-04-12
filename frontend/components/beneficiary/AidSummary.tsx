@@ -49,7 +49,7 @@ export function AidSummary({ crisisId }: AidSummaryProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-openaid-black">{ftVal} ETH</p>
+            <p className="text-lg font-bold text-openaid-black">{ftVal} AID</p>
             <Badge variant="outline" className={confirmed ? "bg-status-green/15 text-status-green border-status-green/30 text-[10px]" : "bg-status-amber/15 text-status-amber border-status-amber/30 text-[10px]"}>
               {confirmed ? "Confirmed" : "Pending Confirmation"}
             </Badge>
@@ -68,7 +68,7 @@ export function AidSummary({ crisisId }: AidSummaryProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-openaid-black">—</p>
+            <p className="text-lg font-bold text-openaid-black">-</p>
             <p className="text-[10px] text-openaid-mid-gray">Check assigned items</p>
           </div>
         </div>

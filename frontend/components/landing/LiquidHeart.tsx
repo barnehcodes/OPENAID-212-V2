@@ -26,7 +26,7 @@ export function LiquidHeart({
     return () => clearTimeout(timer);
   }, [percentage]);
 
-  // The fill level — SVG heart viewBox is 0-100 vertically
+  // The fill level - SVG heart viewBox is 0-100 vertically
   // Higher fillY = less fill (SVG y=0 is top)
   const fillY = 100 - animatedPct;
 

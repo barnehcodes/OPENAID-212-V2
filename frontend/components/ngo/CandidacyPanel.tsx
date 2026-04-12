@@ -51,7 +51,7 @@ export function CandidacyPanel({ crisisId, phase }: CandidacyPanelProps) {
         onClick={handleRegister}
       >
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
-        {canRegister ? "Register as Candidate" : phase === "VOTING" ? "Registration closed — voting in progress" : "Not available in this phase"}
+        {canRegister ? "Register as Candidate" : phase === "VOTING" ? "Registration closed - voting in progress" : "Not available in this phase"}
       </Button>
     </Card>
   );

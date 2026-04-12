@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { wagmiConfig } from "@/lib/wagmi";
+import { MockRoleProvider } from "@/components/providers/MockRoleProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -14,8 +15,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          {children}
-          <Toaster richColors position="bottom-right" />
+          <MockRoleProvider>
+            {children}
+            <Toaster richColors position="bottom-right" />
+          </MockRoleProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </WagmiProvider>

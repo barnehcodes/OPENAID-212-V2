@@ -88,9 +88,6 @@ contract GovernanceDemo is IGovernance {
     /// @notice Crisis ID does not correspond to a declared crisis.
     error CrisisNotFound(uint256 crisisId);
 
-    /// @notice severity must be between 1 and 5 inclusive.
-    error InvalidSeverity(uint256 severity);
-
     /// @notice Caller is not the Tier-3 Crisis Declaration Multisig.
     error NotCrisisDeclarationAuthority(address caller);
 
@@ -203,7 +200,6 @@ contract GovernanceDemo is IGovernance {
     /// @inheritdoc IGovernance
     function declareCrisis(
         string calldata description,
-        uint256 severity,
         uint256 baseDonationCap
     )
         external
@@ -213,14 +209,12 @@ contract GovernanceDemo is IGovernance {
         if (msg.sender != registry.crisisDeclarationMultisig()) {
             revert NotCrisisDeclarationAuthority(msg.sender);
         }
-        if (severity < 1 || severity > 5) revert InvalidSeverity(severity);
 
         crisisId = nextCrisisId++;
 
         _crises[crisisId] = Crisis({
             crisisId:         crisisId,
             description:      description,
-            severity:         severity,
             baseDonationCap:  baseDonationCap,
             phase:            Phase.DECLARED,
             declaredAt:       block.timestamp,
@@ -229,7 +223,7 @@ contract GovernanceDemo is IGovernance {
         });
 
         // Emit before external call (checks-effects-interactions)
-        emit CrisisDeclared(crisisId, description, severity);
+        emit CrisisDeclared(crisisId, description);
 
         // Open donations in DonationManager for this crisis
         donationManager.activateCrisis(crisisId);
@@ -422,9 +416,6 @@ contract GovernanceDemo is IGovernance {
         // Emit before external calls (checks-effects-interactions)
         emit CoordinatorElected(crisisId, winner, winnerVotes);
 
-        // Close donations — coordinator now distributes from their own balance
-        donationManager.deactivateCrisis(crisisId);
-
         // Release escrow to winner (skip if no funds were donated)
         if (donationManager.getCrisisEscrowBalance(crisisId) > 0) {
             donationManager.releaseEscrowToCoordinator(crisisId, winner);
@@ -542,6 +533,32 @@ contract GovernanceDemo is IGovernance {
         if (address(reputationEngine) != address(0)) {
             reputationEngine.recordSuccessfulCoordination(crisis.coordinator, crisisId);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Leftover fund redirection — Tier-3 multisig only
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @inheritdoc IGovernance
+    function redirectLeftoverFunds(
+        uint256 fromCrisisId,
+        uint256 toCrisisId,
+        uint256 amount
+    ) external override {
+        if (msg.sender != registry.crisisDeclarationMultisig()) {
+            revert NotCrisisDeclarationAuthority(msg.sender);
+        }
+        _requireCrisisExists(fromCrisisId);
+        _requireCrisisExists(toCrisisId);
+
+        if (_crises[fromCrisisId].phase != Phase.CLOSED) {
+            revert WrongPhase(fromCrisisId, _crises[fromCrisisId].phase);
+        }
+        if (_crises[toCrisisId].phase == Phase.CLOSED) {
+            revert WrongPhase(toCrisisId, _crises[toCrisisId].phase);
+        }
+
+        donationManager.carryOverEscrow(fromCrisisId, toCrisisId, amount);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

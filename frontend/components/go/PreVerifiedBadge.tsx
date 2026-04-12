@@ -7,7 +7,7 @@ export function PreVerifiedBadge() {
       <div>
         <p className="text-sm font-semibold text-openaid-deep-blue">Pre-Verified Government Organization</p>
         <p className="text-xs text-openaid-dim-text">
-          GOs are verified at registration — no additional verification needed
+          GOs are verified at registration - no additional verification needed
         </p>
       </div>
     </div>

@@ -9,16 +9,16 @@ export function AccountabilityNotice() {
           <h4 className="font-semibold text-status-red">Misconduct Consequences</h4>
           <ul className="mt-2 space-y-1.5 text-sm text-openaid-dim-text">
             <li>
-              <strong className="text-status-red">Escrow Freeze</strong> — All crisis funds frozen immediately
+              <strong className="text-status-red">Escrow Freeze</strong> - All crisis funds frozen immediately
             </li>
             <li>
-              <strong className="text-status-red">Quadratic Penalty</strong> — Reputation score reduced exponentially (n&sup2; scaling)
+              <strong className="text-status-red">Quadratic Penalty</strong> - Reputation score reduced exponentially (n&sup2; scaling)
             </li>
             <li>
-              <strong className="text-status-red">Coordinator Ban</strong> — Permanently banned from running for coordinator
+              <strong className="text-status-red">Coordinator Ban</strong> - Permanently banned from running for coordinator
             </li>
             <li>
-              <strong className="text-status-red">Re-Election</strong> — Crisis enters PAUSED state, new election triggered
+              <strong className="text-status-red">Re-Election</strong> - Crisis enters PAUSED state, new election triggered
             </li>
           </ul>
         </div>

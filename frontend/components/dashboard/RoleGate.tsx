@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useParticipant, type Role } from "@/hooks/useParticipant";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IS_PREVIEW } from "@/lib/previewMode";
 
 interface RoleGateProps {
   /** Allowed roles for this page */
@@ -24,6 +25,7 @@ export function RoleGate({ allowedRoles, children }: RoleGateProps) {
   const { participant, isLoading, isConnected } = useParticipant();
 
   useEffect(() => {
+    if (IS_PREVIEW) return;
     if (isLoading) return;
 
     if (!isConnected) {
@@ -40,6 +42,10 @@ export function RoleGate({ allowedRoles, children }: RoleGateProps) {
       router.replace(roleRoutes[participant.role] ?? "/dashboard");
     }
   }, [isLoading, isConnected, participant, allowedRoles, router]);
+
+  if (IS_PREVIEW) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
@@ -63,7 +69,7 @@ export function RoleGate({ allowedRoles, children }: RoleGateProps) {
 }
 
 /**
- * Dashboard home — auto-redirects to role-specific page.
+ * Dashboard home - auto-redirects to role-specific page.
  */
 export function DashboardRedirect() {
   const router = useRouter();
@@ -71,6 +77,15 @@ export function DashboardRedirect() {
 
   useEffect(() => {
     if (isLoading) return;
+
+    if (IS_PREVIEW) {
+      if (!participant?.role) {
+        router.replace("/register");
+      } else {
+        router.replace(roleRoutes[participant.role] ?? "/dashboard/donor");
+      }
+      return;
+    }
 
     if (!isConnected || !participant?.isRegistered) {
       router.replace("/register");

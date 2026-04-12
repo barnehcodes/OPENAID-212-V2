@@ -19,7 +19,7 @@ const steps = [
     title: "Vote",
     subtitle: "Democratic Election",
     description:
-      "Verified stakeholders vote for a crisis coordinator. GO vote compression prevents institutional capture — if all GOs vote unanimously, their votes compress to one.",
+      "Verified stakeholders vote for a crisis coordinator. GO vote compression prevents institutional capture - if all GOs vote unanimously, their votes compress to one.",
     color: "text-openaid-deep-blue",
     bg: "bg-openaid-deep-blue/10",
   },

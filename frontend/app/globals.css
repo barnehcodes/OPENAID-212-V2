@@ -69,7 +69,7 @@
 }
 
 :root {
-  /* OpenAID light theme — map shadcn variables to our palette */
+  /* OpenAID light theme - map shadcn variables to our palette */
   --background: #EFECE3;
   --foreground: #1a1a1a;
   --card: #F7F5EF;

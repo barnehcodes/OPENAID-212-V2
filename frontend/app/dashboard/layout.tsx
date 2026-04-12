@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/dashboard";
 import { useParticipant } from "@/hooks/useParticipant";
 import { useScaffoldContractRead } from "@/hooks/scaffold-eth";
+import { IS_PREVIEW } from "@/lib/previewMode";
 
 export default function DashboardLayout({
   children,
@@ -12,7 +13,7 @@ export default function DashboardLayout({
   const { address } = useParticipant();
 
   // Check if connected user is coordinator for any crisis
-  // We check crisis #1 as the main crisis — in production this would iterate
+  // We check crisis #1 as the main crisis - in production this would iterate
   const { data: crisisData } = useScaffoldContractRead({
     contractName: "Governance",
     functionName: "getCrisis",
@@ -22,10 +23,11 @@ export default function DashboardLayout({
 
   const coordinator = crisisData ? ((crisisData as any)[2] as string) : undefined;
   const isCoordinator =
-    !!address &&
-    !!coordinator &&
-    coordinator.toLowerCase() === address.toLowerCase() &&
-    coordinator !== "0x0000000000000000000000000000000000000000";
+    IS_PREVIEW ||
+    (!!address &&
+      !!coordinator &&
+      coordinator.toLowerCase() === address.toLowerCase() &&
+      coordinator !== "0x0000000000000000000000000000000000000000");
 
   return (
     <div className="flex h-screen">

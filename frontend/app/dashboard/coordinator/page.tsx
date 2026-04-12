@@ -15,6 +15,7 @@ import { useScaffoldContractRead } from "@/hooks/scaffold-eth";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { Coins, ArrowDownRight, Users, CheckCircle2, Package } from "lucide-react";
+import { IS_PREVIEW } from "@/lib/previewMode";
 
 export default function CoordinatorDashboardPage() {
   const { crisis, selectedId, setSelectedId, crisisCount } = useActiveCrisis();
@@ -29,12 +30,13 @@ export default function CoordinatorDashboardPage() {
 
   const escrowVal = escrow ? formatEther(escrow as bigint) : "0";
 
-  // Check the user is actually the coordinator
+  // Check the user is actually the coordinator (bypass in preview so UI is reviewable)
   const isCoordinator =
-    crisis?.coordinator &&
-    address &&
-    crisis.coordinator.toLowerCase() === address.toLowerCase() &&
-    crisis.coordinator !== "0x0000000000000000000000000000000000000000";
+    IS_PREVIEW ||
+    (crisis?.coordinator &&
+      address &&
+      crisis.coordinator.toLowerCase() === address.toLowerCase() &&
+      crisis.coordinator !== "0x0000000000000000000000000000000000000000");
 
   if (!isCoordinator) {
     return (
@@ -72,15 +74,15 @@ export default function CoordinatorDashboardPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatsCard icon={Coins} label="Escrow Total" value={`${escrowVal} ETH`} iconColor="text-status-amber" iconBg="bg-status-amber/10" />
-          <StatsCard icon={ArrowDownRight} label="Distributed" value="—" iconColor="text-status-green" iconBg="bg-status-green/10" />
-          <StatsCard icon={Coins} label="Remaining" value={`${escrowVal} ETH`} iconColor="text-openaid-deep-blue" iconBg="bg-openaid-deep-blue/10" />
-          <StatsCard icon={Users} label="Beneficiaries" value="—" sub="received / verified" iconColor="text-openaid-blue" iconBg="bg-openaid-blue/10" />
-          <StatsCard icon={CheckCircle2} label="Confirmations" value="—" sub="confirmed / distributed" iconColor="text-status-green" iconBg="bg-status-green/10" />
+          <StatsCard icon={Coins} label="Escrow Total" value={`${escrowVal} AID`} iconColor="text-status-amber" iconBg="bg-status-amber/10" />
+          <StatsCard icon={ArrowDownRight} label="Distributed" value="-" iconColor="text-status-green" iconBg="bg-status-green/10" />
+          <StatsCard icon={Coins} label="Remaining" value={`${escrowVal} AID`} iconColor="text-openaid-deep-blue" iconBg="bg-openaid-deep-blue/10" />
+          <StatsCard icon={Users} label="Beneficiaries" value="-" sub="received / verified" iconColor="text-openaid-blue" iconBg="bg-openaid-blue/10" />
+          <StatsCard icon={CheckCircle2} label="Confirmations" value="-" sub="confirmed / distributed" iconColor="text-status-green" iconBg="bg-status-green/10" />
         </div>
 
         {/* Escrow flow viz */}
-        <EscrowFlow escrowTotal={`${escrowVal} ETH`} distributed="0 ETH" />
+        <EscrowFlow escrowTotal={`${escrowVal} AID`} distributed="0 AID" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Distribute FT */}

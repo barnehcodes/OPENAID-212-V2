@@ -61,7 +61,12 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     address public governanceContract;
 
     /// @notice True if the crisis is currently accepting donations.
-    /// @dev    Toggled by Governance via activateCrisis / deactivateCrisis.
+    /// @dev    Set true on `activateCrisis` (called from Governance.declareCrisis,
+    ///         so donations open at DECLARED) and only set false on `deactivateCrisis`
+    ///         (called from Governance.closeCrisis). Donations therefore remain open
+    ///         throughout DECLARED, VOTING, ACTIVE, REVIEW, and PAUSED phases —
+    ///         only CLOSED stops new donations. Distribution is gated separately by
+    ///         `crisisPaused`.
     mapping(uint256 => bool) public activeCrises;
 
     /// @notice Total AID tokens held in escrow per crisis.
@@ -214,6 +219,7 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     event FacilityDeliveryConfirmed(uint256 indexed nftId, address indexed facility, address indexed beneficiary);
     event CrisisPaused(uint256 indexed crisisId);
     event CrisisUnpaused(uint256 indexed crisisId);
+    event FundsRedirected(uint256 indexed fromCrisisId, uint256 indexed toCrisisId, uint256 amount);
     event CrisisDonationTracked(address indexed donor, uint256 indexed crisisId, uint256 newScore);
     event InKindDonationTracked(address indexed donor, uint256 indexed nftId, uint256 newScore);
     event FTReceiptConfirmed(address indexed beneficiary, uint256 indexed crisisId, uint256 amount);
@@ -287,6 +293,9 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     }
 
     /// @inheritdoc IDonationManager
+    /// @dev Called from Governance.closeCrisis. Stops new donations for the
+    ///      crisis. Existing escrow remains and can be redirected via
+    ///      carryOverEscrow() to an open crisis.
     function deactivateCrisis(uint256 crisisId) external override {
         if (msg.sender != governanceContract) revert NotGovernance(msg.sender);
         if (!activeCrises[crisisId]) revert CrisisNotCurrentlyActive(crisisId);
@@ -300,11 +309,11 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// @inheritdoc IDonationManager
-    /// @dev Freezes escrow: stops donations and revokes coordinator authority.
+    /// @dev Freezes distributions and revokes coordinator authority.
+    ///      Incoming donations remain accepted (continuous-flow model).
     function pauseCrisis(uint256 crisisId) external override {
         if (msg.sender != governanceContract) revert NotGovernance(msg.sender);
         crisisPaused[crisisId] = true;
-        activeCrises[crisisId] = false;
         crisisCoordinator[crisisId] = address(0);
         emit CrisisPaused(crisisId);
     }
@@ -316,6 +325,29 @@ contract DonationManager is ERC20, AccessControl, IDonationManager {
         crisisPaused[crisisId] = false;
         activeCrises[crisisId] = true;
         emit CrisisUnpaused(crisisId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Escrow carryover — Governance only
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @inheritdoc IDonationManager
+    /// @dev Moves leftover funds from a closed crisis to an open crisis.
+    ///      fromCrisisId must NOT be active (closed). toCrisisId must be active.
+    function carryOverEscrow(
+        uint256 fromCrisisId,
+        uint256 toCrisisId,
+        uint256 amount
+    ) external override {
+        if (msg.sender != governanceContract) revert NotGovernance(msg.sender);
+        if (amount == 0) revert ZeroAmount();
+        if (!activeCrises[toCrisisId]) revert CrisisNotActive(toCrisisId);
+        if (amount > crisisEscrow[fromCrisisId]) revert InsufficientEscrow(fromCrisisId, amount);
+
+        crisisEscrow[fromCrisisId] -= amount;
+        crisisEscrow[toCrisisId]   += amount;
+
+        emit FundsRedirected(fromCrisisId, toCrisisId, amount);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

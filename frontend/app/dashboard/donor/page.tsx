@@ -61,8 +61,8 @@ export default function DonorDashboardPage() {
               crisisId={selectedId}
               name={crisis?.description || `Crisis #${selectedId}`}
               phase={crisis?.phase || "DECLARED"}
-              escrowTotal={`${escrowVal} ETH`}
-              distributed="—"
+              escrowTotal={`${escrowVal} AID`}
+              distributed="-"
               distributionPct={escrowNum > 0 ? 61 : 0}
               beneficiaryCount={0}
               coordinator={crisis?.coordinator}

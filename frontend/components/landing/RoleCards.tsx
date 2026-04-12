@@ -44,7 +44,7 @@ const roles = [
     icon: Briefcase,
     title: "Private Company",
     description:
-      "Contribute corporate donations to humanitarian crises. CSR-transparent — every contribution is publicly verifiable on the blockchain.",
+      "Contribute corporate donations to humanitarian crises. CSR-transparent - every contribution is publicly verifiable on the blockchain.",
     color: "text-status-amber",
     bg: "bg-status-amber/10",
     href: "/register?role=company",

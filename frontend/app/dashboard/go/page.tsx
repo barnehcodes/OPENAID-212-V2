@@ -1,9 +1,9 @@
 "use client";
 
 import { TopBar, RoleGate } from "@/components/dashboard";
-import { DonorStats, DonateForm, VotingPower, ElectionPanel, SamaritanScore, ActivityFeed } from "@/components/donor";
+import { DonorStats, DonateForm, VotingPower, ElectionPanel, ActivityFeed } from "@/components/donor";
 import { PreVerifiedBadge, CompressionIndicator, AdminTools } from "@/components/go";
-import { CrisisCard } from "@/components/shared";
+import { CrisisCard, ReputationScore, BeneficiaryList } from "@/components/shared";
 import { useActiveCrisis } from "@/hooks/useCrisis";
 import { useScaffoldContractRead } from "@/hooks/scaffold-eth";
 import { useAccount } from "wagmi";
@@ -41,7 +41,7 @@ export default function GODashboardPage() {
     <RoleGate allowedRoles={["GO"]}>
       <TopBar
         title="GO Dashboard"
-        subtitle="Government Organization — governance, verification, crisis management"
+        subtitle="Government Organization - governance, verification, crisis management"
         phase={crisis?.phase}
         crisisId={selectedId}
         crisisCount={crisisCount}
@@ -58,7 +58,7 @@ export default function GODashboardPage() {
               crisisId={selectedId}
               name={crisis?.description || `Crisis #${selectedId}`}
               phase={crisis?.phase || "DECLARED"}
-              escrowTotal={`${escrowVal} ETH`}
+              escrowTotal={`${escrowVal} AID`}
               distributed="--"
               distributionPct={0}
               beneficiaryCount={0}
@@ -73,11 +73,12 @@ export default function GODashboardPage() {
               electionRound={electionRound ? Number(electionRound) : 0}
             />
             <AdminTools />
+            <BeneficiaryList />
           </div>
 
           <div className="space-y-6">
             <VotingPower contribution={contributionVal} baseCap={1} role="GO" />
-            <SamaritanScore crisisId={selectedId} />
+            <ReputationScore role="GO" />
             <ActivityFeed />
           </div>
         </div>

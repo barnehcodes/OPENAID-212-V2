@@ -28,10 +28,10 @@ export default function BeneficiaryDashboardPage() {
       />
 
       <div className="p-6 lg:p-8 space-y-6 max-w-3xl">
-        {/* Verification status — big and prominent */}
+        {/* Verification status - big and prominent */}
         <VerificationBanner crisisId={selectedId} />
 
-        {/* Action cards — large touch targets */}
+        {/* Action cards - large touch targets */}
         <ActionCards crisisId={selectedId} />
 
         {/* Vote (if VOTING phase) */}

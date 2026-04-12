@@ -110,7 +110,7 @@ export function ElectionPanel({ crisisId, phase, coordinator, electionRound = 0 
           {isVotingPhase
             ? "No candidates registered yet"
             : phase === "DECLARED"
-              ? "Voting has not started — candidates can register"
+              ? "Voting has not started - candidates can register"
               : "Election concluded"}
         </p>
       )}

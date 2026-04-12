@@ -50,7 +50,7 @@ export function HeroSection() {
           className="mt-6 text-lg md:text-xl text-openaid-dim-text max-w-2xl mx-auto leading-relaxed"
         >
           Born from the Al-Haouz earthquake response. OpenAID +212 brings full
-          transparency to humanitarian aid distribution across Morocco — from
+          transparency to humanitarian aid distribution across Morocco - from
           donation to last-mile delivery.
         </motion.p>
 

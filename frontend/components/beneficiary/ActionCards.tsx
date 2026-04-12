@@ -73,7 +73,7 @@ export function ActionCards({ crisisId }: ActionCardsProps) {
             </p>
             {hasFT && (
               <p className="text-sm text-openaid-dim-text mt-2">
-                Amount received: <strong className="text-openaid-black">{ftVal} ETH</strong>
+                Amount received: <strong className="text-openaid-black">{ftVal} AID</strong>
               </p>
             )}
           </div>
@@ -133,7 +133,7 @@ export function ActionCards({ crisisId }: ActionCardsProps) {
         onOpenChange={setFtModalOpen}
         title="Confirm Money Receipt"
         titleAr="تأكيد استلام المبلغ"
-        description={`You are confirming that you received ${ftVal} ETH from Crisis #${crisisId}. This action is permanent and recorded on the blockchain.`}
+        description={`You are confirming that you received ${ftVal} AID from Crisis #${crisisId}. This action is permanent and recorded on the blockchain.`}
         onConfirm={async () => {
           await confirmFT([BigInt(crisisId)]);
           setFtModalOpen(false);

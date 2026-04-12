@@ -33,6 +33,18 @@ interface IDonationManager {
     function releaseEscrowToCoordinator(uint256 crisisId, address coordinator) external;
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Escrow carryover — called by Governance (Tier-3 leftover fund redirection)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// @notice Move leftover escrow funds from a closed crisis to another crisis.
+    /// @dev    Called by Governance after Tier-3 approval. fromCrisisId must be closed
+    ///         (activeCrises == false), toCrisisId must be open (activeCrises == true).
+    /// @param fromCrisisId  The crisis to pull funds from.
+    /// @param toCrisisId    The crisis to push funds to.
+    /// @param amount        Amount of AID tokens to redirect.
+    function carryOverEscrow(uint256 fromCrisisId, uint256 toCrisisId, uint256 amount) external;
+
+    // ─────────────────────────────────────────────────────────────────────────
     // View functions — consumed by Governance for voting eligibility
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -53,7 +65,8 @@ interface IDonationManager {
     // Crisis pause/unpause — called by Governance during misconduct flow
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// @notice Freeze a crisis: stop donations and revoke coordinator authority.
+    /// @notice Freeze a crisis: freeze distributions and revoke coordinator authority.
+    ///         Incoming donations remain accepted (continuous-flow model).
     /// @param crisisId  The crisis to pause.
     function pauseCrisis(uint256 crisisId) external;
 

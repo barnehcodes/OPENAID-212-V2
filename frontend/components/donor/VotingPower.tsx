@@ -40,7 +40,7 @@ export function VotingPower({ contribution, baseCap, role }: VotingPowerProps) {
         </div>
         <Progress value={progress} className="h-2" />
         <p className="text-xs text-openaid-mid-gray mt-1">
-          {contribution} / {threshold} ETH ({multiplier}x threshold for {role})
+          {contribution} / {threshold} AID ({multiplier}x threshold for {role})
         </p>
       </div>
 
@@ -64,7 +64,7 @@ export function VotingPower({ contribution, baseCap, role }: VotingPowerProps) {
               <span className={`${t.role === role ? "font-semibold text-openaid-black" : "text-openaid-dim-text"}`}>
                 {t.role}
               </span>
-              <span className="text-openaid-mid-gray">{t.multiplier} — {t.description}</span>
+              <span className="text-openaid-mid-gray">{t.multiplier} - {t.description}</span>
             </div>
           ))}
         </div>

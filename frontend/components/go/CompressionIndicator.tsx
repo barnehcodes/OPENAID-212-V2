@@ -44,14 +44,14 @@ export function CompressionIndicator({
             <>
               <Merge className="w-5 h-5 text-status-green" />
               <span className="text-sm font-semibold text-status-green">
-                Unanimous — Compressed to 1 vote
+                Unanimous - Compressed to 1 vote
               </span>
             </>
           ) : (
             <>
               <Split className="w-5 h-5 text-status-amber" />
               <span className="text-sm font-semibold text-status-amber">
-                Split vote — each counts individually
+                Split vote - each counts individually
               </span>
             </>
           )}
@@ -69,7 +69,7 @@ export function CompressionIndicator({
         <p className="text-xs text-openaid-dim-text leading-relaxed">
           <strong className="text-openaid-black">Anti-capture mechanism:</strong>{" "}
           If all Government Organizations vote for the same candidate, their combined votes compress
-          to a single vote. This prevents institutional capture — GOs cannot dominate the election
+          to a single vote. This prevents institutional capture - GOs cannot dominate the election
           by voting unanimously. The mechanism incentivizes genuine deliberation.
         </p>
       </div>

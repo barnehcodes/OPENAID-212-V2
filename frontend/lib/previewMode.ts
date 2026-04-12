@@ -1,0 +1,3 @@
+export const IS_PREVIEW = process.env.NEXT_PUBLIC_UI_PREVIEW === "true";
+
+export const PREVIEW_ADDRESS = "0x00000000000000000000000000000000PREVIEW" as const;

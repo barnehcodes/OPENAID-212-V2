@@ -1,9 +1,10 @@
 "use client";
 
 import { TopBar, RoleGate } from "@/components/dashboard";
-import { DonorStats, DonateForm, VotingPower, ElectionPanel, SamaritanScore, ActivityFeed } from "@/components/donor";
+import { DonorStats, DonateForm, VotingPower, ElectionPanel, ActivityFeed } from "@/components/donor";
 import { VerificationStatus, CandidacyPanel } from "@/components/ngo";
-import { CrisisCard } from "@/components/shared";
+import { AdminTools } from "@/components/go";
+import { CrisisCard, ReputationScore, BeneficiaryList } from "@/components/shared";
 import { useActiveCrisis } from "@/hooks/useCrisis";
 import { useScaffoldContractRead } from "@/hooks/scaffold-eth";
 import { useAccount } from "wagmi";
@@ -58,7 +59,7 @@ export default function NGODashboardPage() {
               crisisId={selectedId}
               name={crisis?.description || `Crisis #${selectedId}`}
               phase={crisis?.phase || "DECLARED"}
-              escrowTotal={`${escrowVal} ETH`}
+              escrowTotal={`${escrowVal} AID`}
               distributed="--"
               distributionPct={0}
               beneficiaryCount={0}
@@ -72,11 +73,13 @@ export default function NGODashboardPage() {
               coordinator={crisis?.coordinator}
               electionRound={electionRound ? Number(electionRound) : 0}
             />
+            <AdminTools />
+            <BeneficiaryList />
           </div>
 
           <div className="space-y-6">
             <VotingPower contribution={contributionVal} baseCap={1} role="NGO" />
-            <SamaritanScore crisisId={selectedId} />
+            <ReputationScore role="NGO" />
             <ActivityFeed />
           </div>
         </div>

@@ -23,7 +23,7 @@ export function InKindAssign({ crisisId, phase }: InKindAssignProps) {
     functionName: "assignInKindToBeneficiary",
   });
 
-  const locked = phase !== "ACTIVE";
+  const locked = phase !== "ACTIVE" && phase !== "REVIEW";
 
   const handleAssign = async () => {
     if (!nftId || !beneficiary.trim()) return;

@@ -4,6 +4,7 @@ import { useWatchContractEvent } from "wagmi";
 import { contracts, type ContractName } from "@/contracts/deployedContracts";
 import { useState, useCallback } from "react";
 import type { Log } from "viem";
+import { IS_PREVIEW } from "@/lib/previewMode";
 
 interface UseScaffoldEventHistoryConfig {
   contractName: ContractName;
@@ -29,8 +30,12 @@ export function useScaffoldEventHistory({
     abi: contract.abi,
     eventName,
     onLogs,
-    enabled,
+    enabled: enabled && !IS_PREVIEW,
   });
+
+  if (IS_PREVIEW) {
+    return { data: [] as Log[] };
+  }
 
   return { data: events };
 }

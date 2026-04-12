@@ -6,10 +6,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useScaffoldContractWrite } from "@/hooks/scaffold-eth";
-import { useParticipant } from "@/hooks/useParticipant";
+import { useParticipant, type Role } from "@/hooks/useParticipant";
+import { IS_PREVIEW, PREVIEW_ADDRESS } from "@/lib/previewMode";
+import { useMockRole } from "@/components/providers/MockRoleProvider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZelligePattern } from "@/components/ui/ZelligePattern";
 import { toast } from "sonner";
@@ -66,7 +67,7 @@ const roles = [
     color: "text-status-amber",
     bg: "bg-status-amber/10",
     border: "border-status-amber/30",
-    description: "Corporate CSR donations — transparent and verifiable",
+    description: "Corporate CSR donations - transparent and verifiable",
   },
   {
     id: 3,
@@ -95,15 +96,17 @@ function RegisterContent() {
   const router = useRouter();
   const preselected = searchParams.get("role");
 
-  const { address, isConnected } = useAccount();
+  const wagmiAccount = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { participant } = useParticipant();
+  const mockRole = useMockRole();
+  const address = IS_PREVIEW ? PREVIEW_ADDRESS : wagmiAccount.address;
+  const isConnected = IS_PREVIEW ? true : wagmiAccount.isConnected;
 
   const [selectedRole, setSelectedRole] = useState<typeof roles[number] | null>(
     () => roles.find((r) => r.key === preselected) ?? null
   );
-  const [name, setName] = useState("");
   const [step, setStep] = useState<Step>(preselected ? "connect" : "select");
 
   // Registration contract calls
@@ -119,8 +122,8 @@ function RegisterContent() {
 
   const isPending = regPending || ngoPending;
 
-  // If already registered, redirect
-  if (participant?.isRegistered && step !== "done") {
+  // If already registered, redirect (skip in preview so user can switch roles)
+  if (!IS_PREVIEW && participant?.isRegistered && step !== "done") {
     const roleRoutes: Record<string, string> = {
       Donor: "/dashboard/donor",
       Beneficiary: "/dashboard/beneficiary",
@@ -144,21 +147,30 @@ function RegisterContent() {
   };
 
   const handleRegister = async () => {
-    if (!selectedRole || !name.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
+    if (!selectedRole) return;
+    const placeholderName = selectedRole.label;
 
     try {
+      if (IS_PREVIEW) {
+        const roleKeyMap: Record<string, Role> = {
+          donor: "Donor",
+          go: "GO",
+          ngo: "NGO",
+          company: "PrivateCompany",
+          beneficiary: "Beneficiary",
+        };
+        mockRole.setRole(roleKeyMap[selectedRole.key], placeholderName);
+        setStep("done");
+        toast.success("Preview mode - role selected");
+        return;
+      }
       if (selectedRole.id === 1) {
-        // NGO self-registration
-        await registerNGO([name.trim()]);
+        await registerNGO([placeholderName]);
       } else if (selectedRole.id === 0) {
         toast.error("GO registration requires admin. Contact the system administrator.");
         return;
       } else {
-        // Donor, Beneficiary, PrivateCompany
-        await registerParticipant([BigInt(selectedRole.id), name.trim()]);
+        await registerParticipant([BigInt(selectedRole.id), placeholderName]);
       }
       setStep("done");
       toast.success("Registration successful!");
@@ -283,19 +295,6 @@ function RegisterContent() {
               </div>
 
               <div>
-                <Label htmlFor="name" className="text-xs text-openaid-mid-gray">
-                  {selectedRole?.id === 1 ? "Organization Name" : "Display Name"}
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={selectedRole?.id === 1 ? "e.g. Morocco Relief Fund" : "e.g. Ahmed Benali"}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
                 <Label className="text-xs text-openaid-mid-gray">Role</Label>
                 <div className="mt-1 flex items-center gap-2">
                   {selectedRole && (
@@ -312,7 +311,7 @@ function RegisterContent() {
               <Button
                 className="w-full bg-openaid-deep-blue hover:bg-openaid-deep-blue/90 text-white gap-2 mt-4"
                 onClick={handleRegister}
-                disabled={isPending || !name.trim()}
+                disabled={isPending}
               >
                 {isPending ? (
                   <>

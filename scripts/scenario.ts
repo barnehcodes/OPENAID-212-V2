@@ -316,7 +316,7 @@ async function main(): Promise<void> {
   let crisisA: bigint;
   {
     const tx = await governance.connect(deployer).declareCrisis(
-      "Earthquake Al Haouz September 2023", 4, 100
+      "Earthquake Al Haouz September 2023", 100
     );
     const receipt = await tx.wait();
     // Parse CrisisDeclared event to get crisisId
@@ -334,7 +334,7 @@ async function main(): Promise<void> {
       blockNumber: receipt.blockNumber,
       gasUsed: receipt.gasUsed,
     });
-    console.log(`  ✓ declareCrisis | crisisId: ${crisisA} | severity: 4 | baseDonationCap: 100`);
+    console.log(`  ✓ declareCrisis | crisisId: ${crisisA} | baseDonationCap: 100`);
     console.log(`    tx: ${receipt.hash.slice(0, 18)}… | block: ${receipt.blockNumber} | gas: ${receipt.gasUsed}`);
   }
 
@@ -509,7 +509,7 @@ async function main(): Promise<void> {
     let crisisB: bigint;
     {
       const tx = await governance.connect(deployer).declareCrisis(
-        "Flood Souss-Massa 2024", 3, 50
+        "Flood Souss-Massa 2024", 50
       );
       const receipt = await tx.wait();
       const event = receipt.logs.find((log: any) => {
@@ -520,7 +520,7 @@ async function main(): Promise<void> {
       const parsed = governance.interface.parseLog({ topics: event!.topics as string[], data: event!.data });
       crisisB = parsed!.args.crisisId;
       txLog.push({ step: "B1", function: "declareCrisis", txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed });
-      console.log(`  ✓ declareCrisis | crisisId: ${crisisB} | severity: 3 | baseDonationCap: 50`);
+      console.log(`  ✓ declareCrisis | crisisId: ${crisisB} | baseDonationCap: 50`);
     }
 
     // B2: Verify beneficiaries for crisis B
@@ -689,7 +689,6 @@ async function main(): Promise<void> {
       crisisA: {
         crisisId: Number(crisisA),
         description: "Earthquake Al Haouz September 2023",
-        severity: 4,
         baseDonationCap: 100,
         phasesTraversed: ["DECLARED", "VOTING", "ACTIVE", "CLOSED"],
         coordinatorElected: names[(await governance.getCrisis(crisisA)).coordinator] || "unknown",
@@ -703,7 +702,6 @@ async function main(): Promise<void> {
       crisisB: {
         crisisId: Number(crisisB),
         description: "Flood Souss-Massa 2024",
-        severity: 3,
         baseDonationCap: 50,
         phasesTraversed: ["DECLARED", "VOTING", "ACTIVE", "REVIEW", "CLOSED"],
         coordinatorElected: "ngo1",

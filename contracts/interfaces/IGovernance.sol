@@ -17,7 +17,6 @@ interface IGovernance {
     struct Crisis {
         uint256 crisisId;
         string  description;        // Human-readable summary (e.g. "Earthquake Al Haouz Sept 2023")
-        uint256 severity;           // 1–5 scale set by Tier-3 multisig
         uint256 baseDonationCap;    // Minimum donation (in AID) for voting rights — multiplied by role
         Phase   phase;
         uint256 declaredAt;         // Block timestamp of declaration
@@ -46,7 +45,7 @@ interface IGovernance {
     // Events
     // ─────────────────────────────────────────────────────────────────────────
 
-    event CrisisDeclared(uint256 indexed crisisId, string description, uint256 severity);
+    event CrisisDeclared(uint256 indexed crisisId, string description);
     event CandidateRegistered(uint256 indexed crisisId, address indexed candidate);
     event VotingStarted(uint256 indexed crisisId, uint256 voteStart, uint256 voteEnd);
     event VoteCast(uint256 indexed crisisId, address indexed voter, address indexed candidate);
@@ -66,12 +65,10 @@ interface IGovernance {
 
     /// @notice Declare a new crisis. Caller must be the Tier-3 Crisis Declaration Multisig.
     /// @param description    Human-readable crisis summary.
-    /// @param severity       Severity level 1–5.
     /// @param baseDonationCap Minimum AID donation for voting rights (multiplied by role cap multiplier).
     /// @return crisisId      The ID assigned to the new crisis.
     function declareCrisis(
         string calldata description,
-        uint256 severity,
         uint256 baseDonationCap
     ) external returns (uint256 crisisId);
 
@@ -118,6 +115,13 @@ interface IGovernance {
     /// @dev    Caller must be the Tier-1 Operational Authority. Awards positive reputation.
     /// @param crisisId  Crisis in ACTIVE phase with no misconduct flag.
     function closeCrisis(uint256 crisisId) external;
+
+    /// @notice Redirect leftover escrow funds from a CLOSED crisis to another crisis.
+    /// @dev    Caller must be the Tier-3 Crisis Declaration Multisig.
+    /// @param fromCrisisId  The CLOSED crisis to pull funds from.
+    /// @param toCrisisId    The target crisis (must not be CLOSED).
+    /// @param amount        Amount of AID tokens to redirect.
+    function redirectLeftoverFunds(uint256 fromCrisisId, uint256 toCrisisId, uint256 amount) external;
 
     // ─────────────────────────────────────────────────────────────────────────
     // View functions — consumed by ReputationEngine and frontends

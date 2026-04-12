@@ -23,7 +23,7 @@ export function ZeroTrust() {
           transition={{ duration: 0.6 }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
         >
-          {/* Left — message */}
+          {/* Left - message */}
           <div>
             <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 mb-6">
               <ShieldAlert className="w-4 h-4 text-status-red" />
@@ -39,7 +39,7 @@ export function ZeroTrust() {
 
             <p className="text-white/60 leading-relaxed mb-6">
               OpenAID +212 assumes no one is trustworthy by default. Every participant
-              — including government organizations and NGOs — is subject to continuous
+              - including government organizations and NGOs - is subject to continuous
               reputation scoring. Misconduct triggers quadratic penalties, escrow
               freezes, and potential banning.
             </p>
@@ -66,7 +66,7 @@ export function ZeroTrust() {
             </div>
           </div>
 
-          {/* Right — reputation bars */}
+          {/* Right - reputation bars */}
           <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
             <div className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-6">
               Live Reputation Scores
@@ -113,7 +113,7 @@ export function ZeroTrust() {
                   {actor.flagged && (
                     <div className="mt-1 text-xs text-status-red flex items-center gap-1">
                       <ShieldAlert className="w-3 h-3" />
-                      Misconduct detected — under review
+                      Misconduct detected - under review
                     </div>
                   )}
                 </div>

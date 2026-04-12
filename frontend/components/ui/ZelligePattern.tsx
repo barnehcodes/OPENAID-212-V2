@@ -7,7 +7,7 @@ interface ZelligePatternProps {
   className?: string;
 }
 
-// 8-point star tile SVG — a single zellige unit, encoded inline
+// 8-point star tile SVG - a single zellige unit, encoded inline
 function makeTileSvg(stroke: string, opacity: number) {
   // Geometric 8-point star in a 60x60 tile
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'>

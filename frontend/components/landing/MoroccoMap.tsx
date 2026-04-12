@@ -22,7 +22,7 @@ const crisisPoints: CrisisPoint[] = [
     name: "Al-Haouz Earthquake",
     region: "Marrakech-Safi",
     status: "active",
-    donated: "2,450 ETH",
+    donated: "2,450 AID",
     beneficiaries: 1240,
     x: 38,
     y: 58,
@@ -32,7 +32,7 @@ const crisisPoints: CrisisPoint[] = [
     name: "Taroudant Flood",
     region: "Souss-Massa",
     status: "active",
-    donated: "340 ETH",
+    donated: "340 AID",
     beneficiaries: 320,
     x: 32,
     y: 68,
@@ -42,7 +42,7 @@ const crisisPoints: CrisisPoint[] = [
     name: "Errachidia Drought",
     region: "Draa-Tafilalet",
     status: "monitoring",
-    donated: "120 ETH",
+    donated: "120 AID",
     beneficiaries: 180,
     x: 55,
     y: 55,
@@ -52,7 +52,7 @@ const crisisPoints: CrisisPoint[] = [
     name: "Chefchaouen Landslide",
     region: "Tanger-Tetouan",
     status: "resolved",
-    donated: "890 ETH",
+    donated: "890 AID",
     beneficiaries: 540,
     x: 40,
     y: 18,
@@ -62,7 +62,7 @@ const crisisPoints: CrisisPoint[] = [
     name: "Ouarzazate Heat Wave",
     region: "Draa-Tafilalet",
     status: "monitoring",
-    donated: "75 ETH",
+    donated: "75 AID",
     beneficiaries: 90,
     x: 50,
     y: 62,
@@ -108,7 +108,7 @@ export function MoroccoMap() {
             className="w-full h-full"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Morocco outline — simplified polygon */}
+            {/* Morocco outline - simplified polygon */}
             <path
               d="M180 60 L320 40 L380 50 L420 30 L460 45 L500 35 L520 55 L540 80
                  L560 120 L580 160 L600 200 L620 240 L640 260 L620 290 L580 310

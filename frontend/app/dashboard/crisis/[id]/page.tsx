@@ -17,10 +17,10 @@ const phases = ["DECLARED", "VOTING", "ACTIVE", "REVIEW", "CLOSED"] as const;
 const phaseIndex: Record<string, number> = { DECLARED: 0, VOTING: 1, ACTIVE: 2, REVIEW: 3, PAUSED: 3, CLOSED: 4 };
 
 const mockFeed: FeedItem[] = [
-  { id: "1", type: "donation", description: "FT Donation received", amount: "5.0 ETH", timestamp: "2 min ago" },
-  { id: "2", type: "distribution", description: "FT distributed to beneficiary", amount: "1.2 ETH", timestamp: "15 min ago" },
+  { id: "1", type: "donation", description: "FT Donation received", amount: "5.0 AID", timestamp: "2 min ago" },
+  { id: "2", type: "distribution", description: "FT distributed to beneficiary", amount: "1.2 AID", timestamp: "15 min ago" },
   { id: "3", type: "vote", description: "Vote cast in election", timestamp: "1 hour ago" },
-  { id: "4", type: "confirm", description: "Beneficiary confirmed receipt", amount: "0.8 ETH", timestamp: "2 hours ago" },
+  { id: "4", type: "confirm", description: "Beneficiary confirmed receipt", amount: "0.8 AID", timestamp: "2 hours ago" },
   { id: "5", type: "inkind", description: "In-kind donation: Medical kit", timestamp: "3 hours ago" },
 ];
 
@@ -106,14 +106,14 @@ export default function CrisisDetailPage({
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard icon={Coins} label="Escrow Total" value={`${escrowVal} ETH`} iconColor="text-status-amber" iconBg="bg-status-amber/10" />
+          <StatsCard icon={Coins} label="Escrow Total" value={`${escrowVal} AID`} iconColor="text-status-amber" iconBg="bg-status-amber/10" />
           <StatsCard icon={Coins} label="Distributed" value="--" iconColor="text-status-green" iconBg="bg-status-green/10" />
           <StatsCard icon={Users} label="Candidates" value={candidateList.length} iconColor="text-openaid-deep-blue" iconBg="bg-openaid-deep-blue/10" />
           <StatsCard icon={Vote} label="Yes / No Votes" value={`${crisis?.yesVotes ?? 0} / ${crisis?.noVotes ?? 0}`} iconColor="text-status-amber" iconBg="bg-status-amber/10" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left — details */}
+          {/* Left - details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Coordinator */}
             <Card className="bg-openaid-card-bg border-openaid-border p-6">
@@ -154,7 +154,7 @@ export default function CrisisDetailPage({
             </Card>
           </div>
 
-          {/* Right — gauges */}
+          {/* Right - gauges */}
           <div className="space-y-6">
             <Card className="bg-openaid-card-bg border-openaid-border p-6 flex flex-col items-center">
               <h3 className="font-semibold text-openaid-black mb-4">Distribution Progress</h3>

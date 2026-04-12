@@ -131,17 +131,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "severity",
-        "type": "uint256"
-      }
-    ],
-    "name": "InvalidSeverity",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "crisisId",
         "type": "uint256"
       }
@@ -401,12 +390,6 @@
         "internalType": "string",
         "name": "description",
         "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "severity",
-        "type": "uint256"
       }
     ],
     "name": "CrisisDeclared",
@@ -698,11 +681,6 @@
       },
       {
         "internalType": "uint256",
-        "name": "severity",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "baseDonationCap",
         "type": "uint256"
       }
@@ -838,11 +816,6 @@
             "internalType": "string",
             "name": "description",
             "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "severity",
-            "type": "uint256"
           },
           {
             "internalType": "uint256",
@@ -1001,6 +974,29 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "fromCrisisId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "toCrisisId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "redirectLeftoverFunds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

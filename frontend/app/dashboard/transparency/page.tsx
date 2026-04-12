@@ -22,18 +22,18 @@ import { ReputationBar } from "@/components/shared";
 import { TransactionFeed, type FeedItem } from "@/components/shared";
 import { Eye, Search, Coins, Users, Activity, Shield, ExternalLink } from "lucide-react";
 
-// Mock data for demo — in production these come from event indexing
+// Mock data for demo - in production these come from event indexing
 const crises = [
-  { id: 1, name: "Al-Haouz Earthquake Relief", phase: "ACTIVE", donated: "2,450 ETH", beneficiaries: 1240, coordinator: "0xa1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4" },
-  { id: 2, name: "Taroudant Flood Response", phase: "VOTING", donated: "340 ETH", beneficiaries: 320, coordinator: "0x0000000000000000000000000000000000000000" },
-  { id: 3, name: "Chefchaouen Landslide Aid", phase: "CLOSED", donated: "890 ETH", beneficiaries: 540, coordinator: "0xe5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890" },
+  { id: 1, name: "Al-Haouz Earthquake Relief", phase: "ACTIVE", donated: "2,450 AID", beneficiaries: 1240, coordinator: "0xa1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4" },
+  { id: 2, name: "Taroudant Flood Response", phase: "VOTING", donated: "340 AID", beneficiaries: 320, coordinator: "0x0000000000000000000000000000000000000000" },
+  { id: 3, name: "Chefchaouen Landslide Aid", phase: "CLOSED", donated: "890 AID", beneficiaries: 540, coordinator: "0xe5f67890a1b2c3d4e5f67890a1b2c3d4e5f67890" },
 ];
 
 const recentTransactions: FeedItem[] = [
-  { id: "1", type: "donation", description: "Donated 5.0 ETH to Crisis #1", address: "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73", amount: "5.0 ETH", timestamp: "Block #4521" },
-  { id: "2", type: "distribution", description: "Distributed 1.2 ETH to beneficiary", address: "0xa1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4", amount: "1.2 ETH", timestamp: "Block #4520" },
+  { id: "1", type: "donation", description: "Donated 5.0 AID to Crisis #1", address: "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73", amount: "5.0 AID", timestamp: "Block #4521" },
+  { id: "2", type: "distribution", description: "Distributed 1.2 AID to beneficiary", address: "0xa1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4", amount: "1.2 AID", timestamp: "Block #4520" },
   { id: "3", type: "vote", description: "Vote cast in Crisis #2 election", address: "0x9876543210fedcba9876543210fedcba98765432", timestamp: "Block #4518" },
-  { id: "4", type: "confirm", description: "Beneficiary confirmed FT receipt", address: "0xabcdef1234567890abcdef1234567890abcdef12", amount: "0.8 ETH", timestamp: "Block #4516" },
+  { id: "4", type: "confirm", description: "Beneficiary confirmed FT receipt", address: "0xabcdef1234567890abcdef1234567890abcdef12", amount: "0.8 AID", timestamp: "Block #4516" },
   { id: "5", type: "inkind", description: "In-kind donation: Medical supplies", address: "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73", timestamp: "Block #4514" },
   { id: "6", type: "misconduct", description: "Misconduct vote initiated for coordinator", address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", timestamp: "Block #4510" },
 ];
@@ -57,7 +57,7 @@ export default function TransparencyExplorerPage() {
           <h1 className="text-xl font-semibold text-openaid-black">Transparency Explorer</h1>
         </div>
         <p className="text-sm text-openaid-dim-text mb-4">
-          Public ledger — no wallet connection required. Every transaction, donation, and distribution is verifiable.
+          Public ledger - no wallet connection required. Every transaction, donation, and distribution is verifiable.
         </p>
 
         {/* Search */}
@@ -77,7 +77,7 @@ export default function TransparencyExplorerPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-openaid-card-bg border-openaid-border p-5 text-center">
             <Coins className="w-6 h-6 text-openaid-deep-blue mx-auto mb-2" />
-            <p className="text-2xl font-bold text-openaid-black">3,680 ETH</p>
+            <p className="text-2xl font-bold text-openaid-black">3,680 AID</p>
             <p className="text-xs text-openaid-mid-gray">Total Donated</p>
           </Card>
           <Card className="bg-openaid-card-bg border-openaid-border p-5 text-center">
@@ -131,7 +131,7 @@ export default function TransparencyExplorerPage() {
                         {c.coordinator !== "0x0000000000000000000000000000000000000000" ? (
                           <AddressBadge address={c.coordinator} />
                         ) : (
-                          <span className="text-xs text-openaid-mid-gray">—</span>
+                          <span className="text-xs text-openaid-mid-gray">-</span>
                         )}
                       </TableCell>
                       <TableCell>

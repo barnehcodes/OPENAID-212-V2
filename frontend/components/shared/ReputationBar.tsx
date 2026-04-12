@@ -45,7 +45,7 @@ export function ReputationBar({ label, score, trend, flagged }: ReputationBarPro
       {flagged && (
         <div className="mt-1 text-xs text-status-red flex items-center gap-1">
           <ShieldAlert className="w-3 h-3" />
-          Misconduct detected — under review
+          Misconduct detected - under review
         </div>
       )}
     </div>

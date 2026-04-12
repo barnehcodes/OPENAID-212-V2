@@ -136,7 +136,7 @@ describe("Governance", function () {
   async function declareCrisis(baseCap = BASE_CAP): Promise<bigint> {
     const tx = await governance
       .connect(crisisMS)
-      .declareCrisis("Earthquake Al Haouz", 4n, baseCap);
+      .declareCrisis("Earthquake Al Haouz", baseCap);
     const receipt = await tx.wait();
     const event = receipt!.logs
       .map((log) => {
@@ -228,15 +228,14 @@ describe("Governance", function () {
   describe("declareCrisis", function () {
     it("Tier-3 multisig can declare a crisis", async function () {
       await expect(
-        governance.connect(crisisMS).declareCrisis("Flood Souss", 3n, BASE_CAP)
+        governance.connect(crisisMS).declareCrisis("Flood Souss", BASE_CAP)
       )
         .to.emit(governance, "CrisisDeclared")
-        .withArgs(1n, "Flood Souss", 3n);
+        .withArgs(1n, "Flood Souss");
 
       const crisis = await governance.getCrisis(1n);
       expect(crisis.crisisId).to.equal(1n);
       expect(crisis.description).to.equal("Flood Souss");
-      expect(crisis.severity).to.equal(3n);
       expect(crisis.baseDonationCap).to.equal(BASE_CAP);
       expect(crisis.phase).to.equal(Phase.DECLARED);
       expect(crisis.coordinator).to.equal(ethers.ZeroAddress);
@@ -244,8 +243,8 @@ describe("Governance", function () {
     });
 
     it("auto-increments crisis IDs", async function () {
-      const tx1 = await governance.connect(crisisMS).declareCrisis("Crisis A", 1n, BASE_CAP);
-      const tx2 = await governance.connect(crisisMS).declareCrisis("Crisis B", 2n, BASE_CAP);
+      const tx1 = await governance.connect(crisisMS).declareCrisis("Crisis A", BASE_CAP);
+      const tx2 = await governance.connect(crisisMS).declareCrisis("Crisis B", BASE_CAP);
       await tx1.wait();
       await tx2.wait();
       const c1 = await governance.getCrisis(1n);
@@ -256,38 +255,22 @@ describe("Governance", function () {
     });
 
     it("activates the crisis in DonationManager", async function () {
-      await governance.connect(crisisMS).declareCrisis("Flood", 2n, BASE_CAP);
+      await governance.connect(crisisMS).declareCrisis("Flood", BASE_CAP);
       expect(await dm.activeCrises(1n)).to.be.true;
     });
 
     it("reverts if caller is not Tier-3 multisig", async function () {
       await expect(
-        governance.connect(operationalAuth).declareCrisis("Flood", 2n, BASE_CAP)
+        governance.connect(operationalAuth).declareCrisis("Flood", BASE_CAP)
       )
         .to.be.revertedWithCustomError(governance, "NotCrisisDeclarationAuthority")
         .withArgs(operationalAuth.address);
 
       await expect(
-        governance.connect(stranger).declareCrisis("Flood", 2n, BASE_CAP)
+        governance.connect(stranger).declareCrisis("Flood", BASE_CAP)
       )
         .to.be.revertedWithCustomError(governance, "NotCrisisDeclarationAuthority")
         .withArgs(stranger.address);
-    });
-
-    it("reverts if severity is 0 or > 5", async function () {
-      await expect(governance.connect(crisisMS).declareCrisis("X", 0n, BASE_CAP))
-        .to.be.revertedWithCustomError(governance, "InvalidSeverity")
-        .withArgs(0n);
-      await expect(governance.connect(crisisMS).declareCrisis("X", 6n, BASE_CAP))
-        .to.be.revertedWithCustomError(governance, "InvalidSeverity")
-        .withArgs(6n);
-    });
-
-    it("accepts severity values 1–5", async function () {
-      for (let s = 1n; s <= 5n; s++) {
-        await expect(governance.connect(crisisMS).declareCrisis(`Crisis ${s}`, s, BASE_CAP))
-          .to.not.be.reverted;
-      }
     });
   });
 
@@ -573,10 +556,10 @@ describe("Governance", function () {
       expect(crisis.phase).to.equal(Phase.ACTIVE);
     });
 
-    it("deactivates donations in DonationManager after finalization", async function () {
+    it("keeps donations open after finalization (continuous-flow model)", async function () {
       await mineTime(VOTING_DURATION + 1);
       await governance.finalizeElection(crisisId);
-      expect(await dm.activeCrises(crisisId)).to.be.false;
+      expect(await dm.activeCrises(crisisId)).to.be.true;
     });
 
     it("elects candidate with most non-GO votes when GOs don't vote", async function () {
@@ -943,10 +926,17 @@ describe("Governance", function () {
     it("skips reputation call if reputationEngine is not set", async function () {
       const GovFactory = await ethers.getContractFactory("Governance");
       const g2 = await GovFactory.deploy(registry.target, dm.target, ethers.ZeroAddress);
+      // Deactivate existing crisis before switching governance (continuous-flow keeps it active)
+      const govAddr = await governance.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [govAddr, "0xDE0B6B3A7640000"]);
+      await ethers.provider.send("hardhat_impersonateAccount", [govAddr]);
+      const govSigner = await ethers.getSigner(govAddr);
+      await dm.connect(govSigner).deactivateCrisis(crisisId);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [govAddr]);
       await dm.connect(deployer).setGovernanceContract(g2.target);
 
       const id2 = await (async () => {
-        const tx = await g2.connect(crisisMS).declareCrisis("Test", 1n, 0n);
+        const tx = await g2.connect(crisisMS).declareCrisis("Test", 0n);
         const r = await tx.wait();
         const ev = r!.logs
           .map((l) => { try { return g2.interface.parseLog(l); } catch { return null; } })
@@ -1028,10 +1018,17 @@ describe("Governance", function () {
     it("skips reputation call if reputationEngine not set", async function () {
       const GovFactory = await ethers.getContractFactory("Governance");
       const g2 = await GovFactory.deploy(registry.target, dm.target, ethers.ZeroAddress);
+      // Deactivate existing crisis before switching governance (continuous-flow keeps it active)
+      const govAddr = await governance.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [govAddr, "0xDE0B6B3A7640000"]);
+      await ethers.provider.send("hardhat_impersonateAccount", [govAddr]);
+      const govSigner = await ethers.getSigner(govAddr);
+      await dm.connect(govSigner).deactivateCrisis(crisisId);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [govAddr]);
       await dm.connect(deployer).setGovernanceContract(g2.target);
 
       const id2 = await (async () => {
-        const tx = await g2.connect(crisisMS).declareCrisis("Test", 1n, 0n);
+        const tx = await g2.connect(crisisMS).declareCrisis("Test", 0n);
         const r = await tx.wait();
         const ev = r!.logs
           .map((l) => { try { return g2.interface.parseLog(l); } catch { return null; } })

@@ -3,6 +3,7 @@
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { contracts, type ContractName } from "@/contracts/deployedContracts";
 import { toast } from "sonner";
+import { IS_PREVIEW } from "@/lib/previewMode";
 
 interface UseScaffoldContractWriteConfig {
   contractName: ContractName;
@@ -18,6 +19,12 @@ export function useScaffoldContractWrite({
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const writeAsync = async (args?: readonly unknown[], value?: bigint) => {
+    if (IS_PREVIEW) {
+      toast.success("Preview mode - transaction simulated", {
+        description: `${contractName}.${functionName}`,
+      });
+      return ("0xPREVIEW" + Math.random().toString(16).slice(2)) as `0x${string}`;
+    }
     try {
       const toastId = toast.loading("Sending transaction...");
       const txHash = await writeContractAsync({
@@ -39,6 +46,17 @@ export function useScaffoldContractWrite({
       throw e;
     }
   };
+
+  if (IS_PREVIEW) {
+    return {
+      writeAsync,
+      isPending: false,
+      isConfirming: false,
+      isSuccess: false,
+      hash: undefined,
+      error: null,
+    };
+  }
 
   return { writeAsync, isPending, isConfirming, isSuccess, hash, error };
 }

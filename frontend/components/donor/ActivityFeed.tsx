@@ -28,7 +28,7 @@ export function ActivityFeed() {
       type: "donation" as const,
       description: "FT Donation sent",
       address: (e as any).args?.donor ?? "",
-      amount: "ETH",
+      amount: "AID",
       timestamp: "Recent",
     })),
     ...voteEvents.map((e, i) => ({
@@ -42,10 +42,10 @@ export function ActivityFeed() {
 
   // If no live events, show mock data for demo
   const displayItems = items.length > 0 ? items : [
-    { id: "1", type: "donation" as const, description: "Donated 2.5 ETH to Crisis #1", amount: "2.5 ETH", timestamp: "2 min ago" },
+    { id: "1", type: "donation" as const, description: "Donated 2.5 AID to Crisis #1", amount: "2.5 AID", timestamp: "2 min ago" },
     { id: "2", type: "vote" as const, description: "Voted for coordinator candidate", timestamp: "1 hour ago" },
     { id: "3", type: "confirm" as const, description: "Tracked donation for Crisis #1", timestamp: "3 hours ago" },
-    { id: "4", type: "donation" as const, description: "Donated 1.0 ETH to Crisis #2", amount: "1.0 ETH", timestamp: "1 day ago" },
+    { id: "4", type: "donation" as const, description: "Donated 1.0 AID to Crisis #2", amount: "1.0 AID", timestamp: "1 day ago" },
   ];
 
   return (

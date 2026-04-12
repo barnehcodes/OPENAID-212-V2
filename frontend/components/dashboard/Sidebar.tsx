@@ -33,44 +33,28 @@ interface NavItem {
 const roleNavItems: Record<Role, NavItem[]> = {
   Donor: [
     { label: "Dashboard", href: "/dashboard/donor", icon: LayoutDashboard },
-    { label: "Donate", href: "/dashboard/donor#donate", icon: Heart },
-    { label: "Voting", href: "/dashboard/donor#voting", icon: Vote },
-    { label: "Samaritan Score", href: "/dashboard/donor#samaritan", icon: Award },
     { label: "Transparency", href: "/dashboard/transparency", icon: Eye },
   ],
   Beneficiary: [
     { label: "Dashboard", href: "/dashboard/beneficiary", icon: LayoutDashboard },
-    { label: "My Aid", href: "/dashboard/beneficiary#aid", icon: Package },
-    { label: "Confirm Receipt", href: "/dashboard/beneficiary#confirm", icon: CheckCircle2 },
     { label: "Transparency", href: "/dashboard/transparency", icon: Eye },
   ],
   NGO: [
     { label: "Dashboard", href: "/dashboard/ngo", icon: LayoutDashboard },
-    { label: "Donate", href: "/dashboard/ngo#donate", icon: Heart },
-    { label: "Voting", href: "/dashboard/ngo#voting", icon: Vote },
-    { label: "Candidacy", href: "/dashboard/ngo#candidacy", icon: Building2 },
-    { label: "Samaritan Score", href: "/dashboard/ngo#samaritan", icon: Award },
     { label: "Transparency", href: "/dashboard/transparency", icon: Eye },
   ],
   GO: [
     { label: "Dashboard", href: "/dashboard/go", icon: LayoutDashboard },
-    { label: "Donate", href: "/dashboard/go#donate", icon: Heart },
-    { label: "Voting", href: "/dashboard/go#voting", icon: Vote },
-    { label: "Admin Tools", href: "/dashboard/go#admin", icon: Shield },
-    { label: "Verification", href: "/dashboard/go#verify", icon: UserCheck },
     { label: "Transparency", href: "/dashboard/transparency", icon: Eye },
   ],
   PrivateCompany: [
     { label: "Dashboard", href: "/dashboard/donor", icon: LayoutDashboard },
-    { label: "Donate", href: "/dashboard/donor#donate", icon: Heart },
     { label: "Transparency", href: "/dashboard/transparency", icon: Eye },
   ],
 };
 
 const coordinatorNavItems: NavItem[] = [
   { label: "Command Center", href: "/dashboard/coordinator", icon: Megaphone },
-  { label: "Distribute", href: "/dashboard/coordinator#distribute", icon: Package },
-  { label: "Beneficiary Ledger", href: "/dashboard/coordinator#ledger", icon: Users },
 ];
 
 const roleBadgeColors: Record<Role, string> = {

@@ -26,7 +26,7 @@ export function CTAFooter() {
             Ready to Make Aid Transparent?
           </h2>
           <p className="text-openaid-dim-text mb-10 max-w-lg mx-auto">
-            Join the ecosystem — whether you are donating, distributing, or receiving.
+            Join the ecosystem - whether you are donating, distributing, or receiving.
             Every action is verifiable, every dirham accountable.
           </p>
 
@@ -123,7 +123,7 @@ export function CTAFooter() {
           {/* Bottom bar */}
           <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-xs text-white/40">
-              OpenAID +212 — Master&apos;s Thesis Implementation. Built with Hyperledger Besu QBFT.
+              OpenAID +212 - Master&apos;s Thesis Implementation. Built with Hyperledger Besu QBFT.
             </p>
             <div className="flex items-center gap-4 text-xs text-white/40">
               <span>Chain ID: 1337</span>

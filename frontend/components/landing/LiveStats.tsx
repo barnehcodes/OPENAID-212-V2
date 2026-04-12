@@ -85,7 +85,7 @@ export function LiveStats() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-openaid-black">
-                    <AnimatedCounter target={3240} suffix=" ETH" />
+                    <AnimatedCounter target={3240} suffix=" AID" />
                   </div>
                   <div className="text-xs text-openaid-mid-gray">Total Donated</div>
                 </div>
