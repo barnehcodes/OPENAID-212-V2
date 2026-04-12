@@ -16,26 +16,14 @@ node_modules
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
 
-# Deployment artifacts
-deployments/
-
-# Besu — generated keys, genesis, and node data (regenerate with generate-keys.sh)
+# Besu — generated keys, genesis, and runtime data (regenerate with generate-keys.sh)
 besu/genesis.json
 besu/config/networkFiles/
 besu/config/node-*/data/
 besu/config/qbft-config.json
 
-# Scenario test results
-scenario-results/
-
 # Local Python venv (e.g. doc tooling) — never commit
 .venv_docx/
 
-# Internal files
-CLAUDE.md
-CONTRACT-CHANGES-REFERENCE.md
-contract-changes-reference.md
-docs/audit/
-docs/design/
+# Local Claude Code agent state (per-machine settings)
 .claude/
-scenario-results/

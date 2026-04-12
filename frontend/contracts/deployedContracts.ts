@@ -5,19 +5,19 @@ import ReputationEngineAbi from "./abis/ReputationEngine.json";
 
 export const contracts = {
   Registry: {
-    address: "0x42699A7612A82f1d9C36148af9C77354759b210b" as const,
+    address: "0x0Be199A777EECc870a7b13045946Fef1803Dd9e1" as const,
     abi: RegistryAbi,
   },
   DonationManager: {
-    address: "0xa50a51c09a5c451C52BB714527E1974b686D8e77" as const,
+    address: "0xf03b5af17792D7F7707dc54474083BaCAD17e22F" as const,
     abi: DonationManagerAbi,
   },
   Governance: {
-    address: "0x9a3DBCa554e9f6b9257aAa24010DA8377C57c17e" as const,
+    address: "0x36A8bE2C24f812ed7a95f14ffEBDB5F778F61699" as const,
     abi: GovernanceAbi,
   },
   ReputationEngine: {
-    address: "0x2E1f232a9439C3D459FcEca0BeEf13acc8259Dd8" as const,
+    address: "0xD6470D46e2062c4E428375e2D21a0e549B104f3B" as const,
     abi: ReputationEngineAbi,
   },
 } as const;

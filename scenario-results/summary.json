@@ -1,0 +1,1056 @@
+{
+  "timestamp": "2026-03-17T00:35:37.343Z",
+  "network": "besu-local",
+  "chainId": 1337,
+  "mode": "DEMO (30s voting windows)",
+  "participants": [
+    {
+      "name": "deployer",
+      "address": "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73"
+    },
+    {
+      "name": "go1",
+      "address": "0x252Dae0A4b9d9b80F504F6418acd2d364C0c59cD"
+    },
+    {
+      "name": "go2",
+      "address": "0x79196B90D1E952C5A43d4847CAA08d50b967c34A"
+    },
+    {
+      "name": "go3",
+      "address": "0x4bd1280852Cadb002734647305AFC1db7ddD6Acb"
+    },
+    {
+      "name": "ngo1",
+      "address": "0x093d49D617a10F26915553255Ec3FEE532d2C12F"
+    },
+    {
+      "name": "ngo2",
+      "address": "0x138854708D8B603c9b7d4d6e55b6d32D40557F4D"
+    },
+    {
+      "name": "donor1",
+      "address": "0xf472086186382Fca55CD182DE196520aBd76F69d"
+    },
+    {
+      "name": "donor2",
+      "address": "0x5AE58D2bc5145bff0c1bEc0f32BfC2D079BC66ed"
+    },
+    {
+      "name": "beneficiary1",
+      "address": "0x756Be12856A8F44AB22FdBCbD42B70b843377d09"
+    },
+    {
+      "name": "beneficiary2",
+      "address": "0x6f4c950442e1Af093BcfF730381E63Ae9171b87a"
+    },
+    {
+      "name": "company1",
+      "address": "0xafd46e3549CC63d7a240D6177D056857679e6F99"
+    }
+  ],
+  "crisisA": {
+    "crisisId": 1,
+    "description": "Earthquake Al Haouz September 2023",
+    "severity": 4,
+    "baseDonationCap": 100,
+    "phasesTraversed": [
+      "DECLARED",
+      "VOTING",
+      "ACTIVE",
+      "CLOSED"
+    ],
+    "coordinatorElected": "ngo2",
+    "goCompression": "YES — all 3 GOs voted unanimously for ngo1, compressed to 1 vote. ngo2 won with 4 non-GO votes.",
+    "totalFTDonated": 6950,
+    "inKindDonated": 2,
+    "inKindAssigned": 2,
+    "inKindRedeemed": 2
+  },
+  "crisisB": {
+    "crisisId": 2,
+    "description": "Flood Souss-Massa 2024",
+    "severity": 3,
+    "baseDonationCap": 50,
+    "phasesTraversed": [
+      "DECLARED",
+      "VOTING",
+      "ACTIVE",
+      "REVIEW",
+      "CLOSED"
+    ],
+    "coordinatorElected": "ngo1",
+    "misconductOutcome": "CONFIRMED — 3 for, 2 against. ngo1 slashed.",
+    "goCompression": "NO — GO votes split (2 for ngo1, 1 for ngo2), each counts normally."
+  },
+  "validatorScores": {
+    "go1": {
+      "address": "0x252Dae0A4b9d9b80F504F6418acd2d364C0c59cD",
+      "currentScore": 147,
+      "previousScore": 100,
+      "isActive": true,
+      "roundsParticipated": 1,
+      "totalRoundsEligible": 1,
+      "votesCast": 2,
+      "timeoutCount": 0,
+      "misconductCount": 0
+    },
+    "go2": {
+      "address": "0x79196B90D1E952C5A43d4847CAA08d50b967c34A",
+      "currentScore": 147,
+      "previousScore": 100,
+      "isActive": true,
+      "roundsParticipated": 1,
+      "totalRoundsEligible": 1,
+      "votesCast": 2,
+      "timeoutCount": 0,
+      "misconductCount": 0
+    },
+    "go3": {
+      "address": "0x4bd1280852Cadb002734647305AFC1db7ddD6Acb",
+      "currentScore": 111,
+      "previousScore": 100,
+      "isActive": true,
+      "roundsParticipated": 0,
+      "totalRoundsEligible": 1,
+      "votesCast": 2,
+      "timeoutCount": 1,
+      "misconductCount": 0
+    },
+    "ngo1": {
+      "address": "0x093d49D617a10F26915553255Ec3FEE532d2C12F",
+      "currentScore": 152,
+      "previousScore": 96,
+      "isActive": true,
+      "roundsParticipated": 1,
+      "totalRoundsEligible": 1,
+      "votesCast": 2,
+      "timeoutCount": 0,
+      "misconductCount": 1
+    },
+    "ngo2": {
+      "address": "0x138854708D8B603c9b7d4d6e55b6d32D40557F4D",
+      "currentScore": 152,
+      "previousScore": 110,
+      "isActive": true,
+      "roundsParticipated": 1,
+      "totalRoundsEligible": 1,
+      "votesCast": 0,
+      "timeoutCount": 0,
+      "misconductCount": 0
+    }
+  },
+  "tokenStats": {
+    "totalAIDMinted": 10350,
+    "crisisAEscrow": 6950,
+    "crisisBEscrow": 3350
+  },
+  "inKindStats": {
+    "totalDonated": 2,
+    "assigned": 2,
+    "redeemed": 2
+  },
+  "totalTransactions": 84,
+  "gasByFunction": {
+    "registerGO": {
+      "count": 3,
+      "totalGas": "211854",
+      "avgGas": "70618"
+    },
+    "registerNGO": {
+      "count": 2,
+      "totalGas": "136530",
+      "avgGas": "68265"
+    },
+    "verifyNGO": {
+      "count": 2,
+      "totalGas": "62944",
+      "avgGas": "31472"
+    },
+    "registerParticipant(Donor)": {
+      "count": 2,
+      "totalGas": "137892",
+      "avgGas": "68946"
+    },
+    "registerParticipant(Beneficiary)": {
+      "count": 2,
+      "totalGas": "137892",
+      "avgGas": "68946"
+    },
+    "registerParticipant(PrivateCompany)": {
+      "count": 1,
+      "totalGas": "68946",
+      "avgGas": "68946"
+    },
+    "initializeValidator": {
+      "count": 5,
+      "totalGas": "923948",
+      "avgGas": "184789"
+    },
+    "directDonateFT(b1, 50)": {
+      "count": 1,
+      "totalGas": "85503",
+      "avgGas": "85503"
+    },
+    "declareCrisis": {
+      "count": 2,
+      "totalGas": "405472",
+      "avgGas": "202736"
+    },
+    "verifyBeneficiary(b1)": {
+      "count": 2,
+      "totalGas": "102228",
+      "avgGas": "51114"
+    },
+    "verifyBeneficiary(b2)": {
+      "count": 2,
+      "totalGas": "102228",
+      "avgGas": "51114"
+    },
+    "go1.donateFT(1500)": {
+      "count": 1,
+      "totalGas": "108546",
+      "avgGas": "108546"
+    },
+    "go2.donateFT(1500)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "go3.donateFT(1500)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "ngo1.donateFT(1000)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "ngo2.donateFT(1000)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "donor1.donateFT(100)": {
+      "count": 1,
+      "totalGas": "74334",
+      "avgGas": "74334"
+    },
+    "donor2.donateFT(200)": {
+      "count": 1,
+      "totalGas": "74334",
+      "avgGas": "74334"
+    },
+    "company1.donateFT(150)": {
+      "count": 1,
+      "totalGas": "74334",
+      "avgGas": "74334"
+    },
+    "donor1.donateInKind": {
+      "count": 1,
+      "totalGas": "171615",
+      "avgGas": "171615"
+    },
+    "donor2.donateInKind": {
+      "count": 1,
+      "totalGas": "154503",
+      "avgGas": "154503"
+    },
+    "ngo1.registerAsCandidate": {
+      "count": 2,
+      "totalGas": "278978",
+      "avgGas": "139489"
+    },
+    "ngo2.registerAsCandidate": {
+      "count": 2,
+      "totalGas": "244778",
+      "avgGas": "122389"
+    },
+    "startVoting": {
+      "count": 2,
+      "totalGas": "200040",
+      "avgGas": "100020"
+    },
+    "go1.castVote(ngo1)": {
+      "count": 2,
+      "totalGas": "288696",
+      "avgGas": "144348"
+    },
+    "go2.castVote(ngo1)": {
+      "count": 1,
+      "totalGas": "118698",
+      "avgGas": "118698"
+    },
+    "go3.castVote(ngo1)": {
+      "count": 2,
+      "totalGas": "220296",
+      "avgGas": "110148"
+    },
+    "ngo1.castVote(ngo1)": {
+      "count": 2,
+      "totalGas": "244322",
+      "avgGas": "122161"
+    },
+    "donor1.castVote(ngo2)": {
+      "count": 1,
+      "totalGas": "99546",
+      "avgGas": "99546"
+    },
+    "donor2.castVote(ngo2)": {
+      "count": 2,
+      "totalGas": "181992",
+      "avgGas": "90996"
+    },
+    "company1.castVote(ngo2)": {
+      "count": 1,
+      "totalGas": "82446",
+      "avgGas": "82446"
+    },
+    "beneficiary1.castVote(ngo2)": {
+      "count": 2,
+      "totalGas": "155120",
+      "avgGas": "77560"
+    },
+    "finalizeElection": {
+      "count": 2,
+      "totalGas": "262784",
+      "avgGas": "131392"
+    },
+    "distributeFT(b1, 2000)": {
+      "count": 1,
+      "totalGas": "44699",
+      "avgGas": "44699"
+    },
+    "distributeFT(b2, 1500)": {
+      "count": 1,
+      "totalGas": "61799",
+      "avgGas": "61799"
+    },
+    "assignInKind(nft1, b1)": {
+      "count": 1,
+      "totalGas": "63120",
+      "avgGas": "63120"
+    },
+    "assignInKind(nft2, b2)": {
+      "count": 1,
+      "totalGas": "63120",
+      "avgGas": "63120"
+    },
+    "b1.confirmInKindRedemption(nft1)": {
+      "count": 1,
+      "totalGas": "30633",
+      "avgGas": "30633"
+    },
+    "b2.confirmInKindRedemption(nft2)": {
+      "count": 1,
+      "totalGas": "30633",
+      "avgGas": "30633"
+    },
+    "closeCrisis": {
+      "count": 1,
+      "totalGas": "64257",
+      "avgGas": "64257"
+    },
+    "go1.donateFT(750)": {
+      "count": 1,
+      "totalGas": "108546",
+      "avgGas": "108546"
+    },
+    "go2.donateFT(750)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "go3.donateFT(750)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "ngo1.donateFT(500)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "ngo2.donateFT(500)": {
+      "count": 1,
+      "totalGas": "74346",
+      "avgGas": "74346"
+    },
+    "donor1.donateFT(50)": {
+      "count": 1,
+      "totalGas": "74334",
+      "avgGas": "74334"
+    },
+    "donor2.donateFT(50)": {
+      "count": 1,
+      "totalGas": "74334",
+      "avgGas": "74334"
+    },
+    "go2.castVote(ngo2)": {
+      "count": 1,
+      "totalGas": "118698",
+      "avgGas": "118698"
+    },
+    "donor1.castVote(ngo1)": {
+      "count": 1,
+      "totalGas": "82446",
+      "avgGas": "82446"
+    },
+    "initiateMisconductVote": {
+      "count": 1,
+      "totalGas": "112441",
+      "avgGas": "112441"
+    },
+    "go1.castMisconductVote(true)": {
+      "count": 1,
+      "totalGas": "85342",
+      "avgGas": "85342"
+    },
+    "go2.castMisconductVote(true)": {
+      "count": 1,
+      "totalGas": "68242",
+      "avgGas": "68242"
+    },
+    "go3.castMisconductVote(false)": {
+      "count": 1,
+      "totalGas": "85317",
+      "avgGas": "85317"
+    },
+    "ngo2.castMisconductVote(true)": {
+      "count": 1,
+      "totalGas": "68448",
+      "avgGas": "68448"
+    },
+    "donor1.castMisconductVote(false)": {
+      "count": 1,
+      "totalGas": "72618",
+      "avgGas": "72618"
+    },
+    "finalizeMisconductVote": {
+      "count": 1,
+      "totalGas": "139442",
+      "avgGas": "139442"
+    },
+    "recordParticipation(go1, true)": {
+      "count": 1,
+      "totalGas": "75741",
+      "avgGas": "75741"
+    },
+    "recordParticipation(go2, true)": {
+      "count": 1,
+      "totalGas": "75741",
+      "avgGas": "75741"
+    },
+    "recordParticipation(go3, false)": {
+      "count": 1,
+      "totalGas": "75704",
+      "avgGas": "75704"
+    },
+    "recordParticipation(ngo1, true)": {
+      "count": 1,
+      "totalGas": "75741",
+      "avgGas": "75741"
+    },
+    "recordParticipation(ngo2, true)": {
+      "count": 1,
+      "totalGas": "75741",
+      "avgGas": "75741"
+    },
+    "updateScores": {
+      "count": 1,
+      "totalGas": "249205",
+      "avgGas": "249205"
+    }
+  },
+  "transactionLog": [
+    {
+      "step": "setup",
+      "function": "registerGO",
+      "txHash": "0x824f6448dab4d8fb230d32acb910b611a859d96b140804a340edc5ce16ff9bdc",
+      "blockNumber": 28232,
+      "gasUsed": "70622"
+    },
+    {
+      "step": "setup",
+      "function": "registerGO",
+      "txHash": "0xd017e43de88c9b657983ea4fa0615400e4fb29483b65755ecac7d5edc2bea361",
+      "blockNumber": 28233,
+      "gasUsed": "70622"
+    },
+    {
+      "step": "setup",
+      "function": "registerGO",
+      "txHash": "0x22b4944735c34a00d09cfe92202609de1e583e726c8110faa2271605fa1996f3",
+      "blockNumber": 28234,
+      "gasUsed": "70610"
+    },
+    {
+      "step": "setup",
+      "function": "registerNGO",
+      "txHash": "0x5c7d5da32d120db1b9fe37b6e62fc70a268fc163b9299c949df50bb0c20243ee",
+      "blockNumber": 28235,
+      "gasUsed": "68265"
+    },
+    {
+      "step": "setup",
+      "function": "registerNGO",
+      "txHash": "0xcf9502fb6f5d2ed32ffe95be66c2de88aac0bb15cc1981f5a603a4c54579203f",
+      "blockNumber": 28236,
+      "gasUsed": "68265"
+    },
+    {
+      "step": "setup",
+      "function": "verifyNGO",
+      "txHash": "0x67a33f9788b005ca7c3714c19e86ed1d5c6349a45dff95b84554c0374391af39",
+      "blockNumber": 28237,
+      "gasUsed": "31472"
+    },
+    {
+      "step": "setup",
+      "function": "verifyNGO",
+      "txHash": "0xd375d98eb7563829338950402fff49ea25326abe2370abc776d9494dfe97872b",
+      "blockNumber": 28238,
+      "gasUsed": "31472"
+    },
+    {
+      "step": "setup",
+      "function": "registerParticipant(Donor)",
+      "txHash": "0x51ea5a458af34590a3186822f0edadf76e456da59341e9ae898805308d29cccd",
+      "blockNumber": 28239,
+      "gasUsed": "68946"
+    },
+    {
+      "step": "setup",
+      "function": "registerParticipant(Donor)",
+      "txHash": "0xdd6d5b244383b070dd0d80a05eaceb2d75ce23979902af3b891eff01ba3c510b",
+      "blockNumber": 28240,
+      "gasUsed": "68946"
+    },
+    {
+      "step": "setup",
+      "function": "registerParticipant(Beneficiary)",
+      "txHash": "0x9f8e0b80308f020396b23b4f5e737c999869827c19acaba90972c2eb11fca547",
+      "blockNumber": 28241,
+      "gasUsed": "68946"
+    },
+    {
+      "step": "setup",
+      "function": "registerParticipant(Beneficiary)",
+      "txHash": "0x365e2ce398414221a61409732dc4a802e5d5941cd73d853fa7d2dba5bfa12f56",
+      "blockNumber": 28242,
+      "gasUsed": "68946"
+    },
+    {
+      "step": "setup",
+      "function": "registerParticipant(PrivateCompany)",
+      "txHash": "0x0dad5bcbc323f48bce51496b871f38605a4240ffb77763e53b5f5546b3622f37",
+      "blockNumber": 28243,
+      "gasUsed": "68946"
+    },
+    {
+      "step": "setup",
+      "function": "initializeValidator",
+      "txHash": "0x471552e1f5c9f925aa02fbc03427b1a77c53eb6a1ab656df56400c5265225c42",
+      "blockNumber": 28244,
+      "gasUsed": "198408"
+    },
+    {
+      "step": "setup",
+      "function": "initializeValidator",
+      "txHash": "0xd63f84de724e77c64ff3e2fa288a709376b53dd1a6dc2ae76034b1593574bd3e",
+      "blockNumber": 28245,
+      "gasUsed": "181308"
+    },
+    {
+      "step": "setup",
+      "function": "initializeValidator",
+      "txHash": "0x45debb324f890da1672ff71ea2430d2f8cf60ebd482c494283f15f4bef6f6851",
+      "blockNumber": 28246,
+      "gasUsed": "181296"
+    },
+    {
+      "step": "setup",
+      "function": "initializeValidator",
+      "txHash": "0xabe09f3db05059a9c5eb5a7347ef40c779f52a2c58f2db4ff999de0a36163989",
+      "blockNumber": 28247,
+      "gasUsed": "181468"
+    },
+    {
+      "step": "setup",
+      "function": "initializeValidator",
+      "txHash": "0x08efa7734ea7d2d71a6671fa05ca963cd3115f2b1bc972124296b525f6c565e7",
+      "blockNumber": 28248,
+      "gasUsed": "181468"
+    },
+    {
+      "step": "0",
+      "function": "directDonateFT(b1, 50)",
+      "txHash": "0x391e441a93d7243436647fb233e3b699e72d1a336282eda396231d741f19c546",
+      "blockNumber": 28249,
+      "gasUsed": "85503"
+    },
+    {
+      "step": "A1",
+      "function": "declareCrisis",
+      "txHash": "0xfc3144d23a08981dc3a54fe919656c12ea838ffb84eb1efc48264aa975f38349",
+      "blockNumber": 28250,
+      "gasUsed": "225197"
+    },
+    {
+      "step": "A2",
+      "function": "verifyBeneficiary(b1)",
+      "txHash": "0x794ae0d465966b62a7d180b59823e044e0d79b123434d4d0cc3aafadeccadc7d",
+      "blockNumber": 28251,
+      "gasUsed": "51114"
+    },
+    {
+      "step": "A2",
+      "function": "verifyBeneficiary(b2)",
+      "txHash": "0x5fbfa3f1ed3772b37ae3ec8e984e458402a132f58c9eb52b1c5183ff34e7c35c",
+      "blockNumber": 28252,
+      "gasUsed": "51114"
+    },
+    {
+      "step": "A3",
+      "function": "go1.donateFT(1500)",
+      "txHash": "0x2d2e6c036d62eb896919a0b796e4d26398530842f9402ecb406494b649b35827",
+      "blockNumber": 28253,
+      "gasUsed": "108546"
+    },
+    {
+      "step": "A3",
+      "function": "go2.donateFT(1500)",
+      "txHash": "0x463377740c09f8ea1ac58559e578668eabf181b659d4c3795e6ad0a61a65cc04",
+      "blockNumber": 28254,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "A3",
+      "function": "go3.donateFT(1500)",
+      "txHash": "0x457c394016c0aa2320044839366d8fc81b10f9e80fcd133a588e8388d55480c8",
+      "blockNumber": 28255,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "A3",
+      "function": "ngo1.donateFT(1000)",
+      "txHash": "0x91ca98c2fd5fd9c5a1acbd3da56aaa3925a82989c21f236053211cef36803492",
+      "blockNumber": 28256,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "A3",
+      "function": "ngo2.donateFT(1000)",
+      "txHash": "0x16027252fbbe9c245d9757dc47de73028a44ec862b9b40b4d37f29dc6be9e7bd",
+      "blockNumber": 28257,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "A3",
+      "function": "donor1.donateFT(100)",
+      "txHash": "0x02ea7b56a11f68e94a15aabec8efe6479baff52cd8612517ae6e18d4ef1da0f2",
+      "blockNumber": 28258,
+      "gasUsed": "74334"
+    },
+    {
+      "step": "A3",
+      "function": "donor2.donateFT(200)",
+      "txHash": "0xf01963f64126ffda6d3f182a7013b70470f100810402c5165901933670397c1e",
+      "blockNumber": 28259,
+      "gasUsed": "74334"
+    },
+    {
+      "step": "A3",
+      "function": "company1.donateFT(150)",
+      "txHash": "0x8620fe9b41f0e522d8a4e7723834a52f572ef48084aa701ff5ea2898e3100596",
+      "blockNumber": 28260,
+      "gasUsed": "74334"
+    },
+    {
+      "step": "A3",
+      "function": "donor1.donateInKind",
+      "txHash": "0xf3d48ff9dccc57edad835a7ca253a19a788faefa868820e0cc2705e6c07d2b87",
+      "blockNumber": 28261,
+      "gasUsed": "171615"
+    },
+    {
+      "step": "A3",
+      "function": "donor2.donateInKind",
+      "txHash": "0x0d56cee88fc609bf34835918d45dc68d68c3ed94903cf2379e07132a82a46b90",
+      "blockNumber": 28262,
+      "gasUsed": "154503"
+    },
+    {
+      "step": "A4",
+      "function": "ngo1.registerAsCandidate",
+      "txHash": "0xd0ea63574720c47fc918015663ece8f2c4574ad858c8bd143234be0c26a8b95e",
+      "blockNumber": 28263,
+      "gasUsed": "139489"
+    },
+    {
+      "step": "A4",
+      "function": "ngo2.registerAsCandidate",
+      "txHash": "0x3a15c4e44e9c2d2c2ac14dc41ccc4b41338d3b3e2b53978736c78e10d6042cb1",
+      "blockNumber": 28264,
+      "gasUsed": "122389"
+    },
+    {
+      "step": "A5",
+      "function": "startVoting",
+      "txHash": "0x42be576e97d27928a1ec6ed41f163e31e8e5bab7b78be2afae5d61e5740e02fb",
+      "blockNumber": 28265,
+      "gasUsed": "100020"
+    },
+    {
+      "step": "A6",
+      "function": "go1.castVote(ngo1)",
+      "txHash": "0xbd07f6b2b58229445e4fc19d05035b3faae2ac9732ef983f0dc10708c32bcf39",
+      "blockNumber": 28266,
+      "gasUsed": "152898"
+    },
+    {
+      "step": "A6",
+      "function": "go2.castVote(ngo1)",
+      "txHash": "0x9b48bc35f113b3ebec4c64796a94674fb7267332673d28dbeaa1b652aef6dc61",
+      "blockNumber": 28267,
+      "gasUsed": "118698"
+    },
+    {
+      "step": "A6",
+      "function": "go3.castVote(ngo1)",
+      "txHash": "0x3843ff4ddcbe2813b60425b306b88ae87c7ebfcd99428ad92f150229ea24a447",
+      "blockNumber": 28268,
+      "gasUsed": "118698"
+    },
+    {
+      "step": "A6",
+      "function": "ngo1.castVote(ngo1)",
+      "txHash": "0x4fd3711c2b02a344cdc8ec1586eae09fa1652b2a427abe89f76b02c7d4a4efd1",
+      "blockNumber": 28269,
+      "gasUsed": "130711"
+    },
+    {
+      "step": "A6",
+      "function": "donor1.castVote(ngo2)",
+      "txHash": "0x069b4f2f20cdb6b805853cd114f0ab7cb32c8bb2ebc0c5a24e4cb1ff4fbabbcd",
+      "blockNumber": 28270,
+      "gasUsed": "99546"
+    },
+    {
+      "step": "A6",
+      "function": "donor2.castVote(ngo2)",
+      "txHash": "0xb31fed7a2db2d28d717481f08bdc7439ae57c31e31fc415e8c11ee438e6f52d9",
+      "blockNumber": 28271,
+      "gasUsed": "82446"
+    },
+    {
+      "step": "A6",
+      "function": "company1.castVote(ngo2)",
+      "txHash": "0xbf601680d9cfe27cddd0194dc6a8e659e6c7db2bb6f800c1938bd1d1e7683263",
+      "blockNumber": 28272,
+      "gasUsed": "82446"
+    },
+    {
+      "step": "A6",
+      "function": "beneficiary1.castVote(ngo2)",
+      "txHash": "0xf4a4f0405419c673214248dd346010e4f194ac6142c06be439d01801d71d8cd1",
+      "blockNumber": 28273,
+      "gasUsed": "77560"
+    },
+    {
+      "step": "A7",
+      "function": "finalizeElection",
+      "txHash": "0x5b7de6c064bb9985ddf73e17c03e80f36f085e596c4209ca6f45ed00ec6435c8",
+      "blockNumber": 28291,
+      "gasUsed": "132087"
+    },
+    {
+      "step": "A8",
+      "function": "distributeFT(b1, 2000)",
+      "txHash": "0xe7cd26a9a378dd8d0295af8725a6069ec0324d11f33ec95a54511a6a35626003",
+      "blockNumber": 28292,
+      "gasUsed": "44699"
+    },
+    {
+      "step": "A8",
+      "function": "distributeFT(b2, 1500)",
+      "txHash": "0xa4149c04a6d41448db381fc9ced2baef10a6d9c209d972dd2cce36609bd48f0b",
+      "blockNumber": 28293,
+      "gasUsed": "61799"
+    },
+    {
+      "step": "A8",
+      "function": "assignInKind(nft1, b1)",
+      "txHash": "0x7ec87cd2b1922b259539c453f5b89417e261b7a85b629b865f2b0286dfb684df",
+      "blockNumber": 28294,
+      "gasUsed": "63120"
+    },
+    {
+      "step": "A8",
+      "function": "assignInKind(nft2, b2)",
+      "txHash": "0xd608a32715c203762d5e50ab3b637d7ec3fbeb343c3656f0277569d128ccfc31",
+      "blockNumber": 28295,
+      "gasUsed": "63120"
+    },
+    {
+      "step": "A9",
+      "function": "b1.confirmInKindRedemption(nft1)",
+      "txHash": "0x7a13448a4299e480768e406ebb273255e8457af05504410f2dba3b7a15e0ab7c",
+      "blockNumber": 28296,
+      "gasUsed": "30633"
+    },
+    {
+      "step": "A9",
+      "function": "b2.confirmInKindRedemption(nft2)",
+      "txHash": "0x5c62d614fc501b0a4d0b34a0ecbd662a03184ecd8c63ad0bbe0a01155ca996a0",
+      "blockNumber": 28297,
+      "gasUsed": "30633"
+    },
+    {
+      "step": "A10",
+      "function": "closeCrisis",
+      "txHash": "0x32c7d618a2c6814273cf55de834f80a6209132edfc3aae9adb6588e0506e4d71",
+      "blockNumber": 28298,
+      "gasUsed": "64257"
+    },
+    {
+      "step": "B1",
+      "function": "declareCrisis",
+      "txHash": "0xa93376ee899f2e06c837cf30fa819c0e1cad25d83d4d27ba7a3eb6243521f4a5",
+      "blockNumber": 28299,
+      "gasUsed": "180275"
+    },
+    {
+      "step": "B2",
+      "function": "verifyBeneficiary(b1)",
+      "txHash": "0xdf912db140bed0c24abe3b45973b30a5abaa9e0086360579b7a8046ed881accd",
+      "blockNumber": 28300,
+      "gasUsed": "51114"
+    },
+    {
+      "step": "B2",
+      "function": "verifyBeneficiary(b2)",
+      "txHash": "0x678e890122c783c5370ce8ef807f9b8fdd36ea7ae1fcb5828f0d8ffa113c0a0c",
+      "blockNumber": 28301,
+      "gasUsed": "51114"
+    },
+    {
+      "step": "B2b",
+      "function": "go1.donateFT(750)",
+      "txHash": "0x44b46146b95a15915deb5171b9ac76dff2d90abb0c9e826688a6f20be541dd7e",
+      "blockNumber": 28302,
+      "gasUsed": "108546"
+    },
+    {
+      "step": "B2b",
+      "function": "go2.donateFT(750)",
+      "txHash": "0x4eb3e36487fc03442a7ee7c52604428884fa1f764c247d11c9eea1308b78992d",
+      "blockNumber": 28303,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "B2b",
+      "function": "go3.donateFT(750)",
+      "txHash": "0x638c8247972b3f643404949da8ae880daa07918a06110c4596be4012eaaf2f3f",
+      "blockNumber": 28304,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "B2b",
+      "function": "ngo1.donateFT(500)",
+      "txHash": "0x661544f754c3ca73c4a779bf61b1745e4bf3c1944f36a4c86c64940a8916fa59",
+      "blockNumber": 28305,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "B2b",
+      "function": "ngo2.donateFT(500)",
+      "txHash": "0x4b3e191761fd4031b1bab5c7af8d5d119215538cc87e991fee661a60a26a5deb",
+      "blockNumber": 28306,
+      "gasUsed": "74346"
+    },
+    {
+      "step": "B2b",
+      "function": "donor1.donateFT(50)",
+      "txHash": "0x5fd46d70f2a4c8d99d66309da556bd4b0b3e2e6f8397ab527a8c8b11195a2517",
+      "blockNumber": 28307,
+      "gasUsed": "74334"
+    },
+    {
+      "step": "B2b",
+      "function": "donor2.donateFT(50)",
+      "txHash": "0x0693a655706328c3e6d1c14a06d5be280f5616e88e7a4a4d68e675976c2ee8ad",
+      "blockNumber": 28308,
+      "gasUsed": "74334"
+    },
+    {
+      "step": "B2c",
+      "function": "ngo1.registerAsCandidate",
+      "txHash": "0x66c017f48fc59262c4c9bcae43fe199a9c707fb79c48edf0478a4317f1ff97d1",
+      "blockNumber": 28309,
+      "gasUsed": "139489"
+    },
+    {
+      "step": "B2c",
+      "function": "ngo2.registerAsCandidate",
+      "txHash": "0xd0fef1ac803489a69410e55628c5d77cfb6759e95dac772bfab07a49f293fa4a",
+      "blockNumber": 28310,
+      "gasUsed": "122389"
+    },
+    {
+      "step": "B2d",
+      "function": "startVoting",
+      "txHash": "0x15b2dc3ccb3c935acc3c4f7708b4fa65fcfe00d0a79ec0efa3d7434004a8f0f3",
+      "blockNumber": 28311,
+      "gasUsed": "100020"
+    },
+    {
+      "step": "B2e",
+      "function": "go1.castVote(ngo1)",
+      "txHash": "0x133ae8e9d7c970c5420afec00da94f89226eb7ad5a2e8663efaf5732ad658a1c",
+      "blockNumber": 28312,
+      "gasUsed": "135798"
+    },
+    {
+      "step": "B2e",
+      "function": "go2.castVote(ngo2)",
+      "txHash": "0x16b865a9536eb53879d23b732ada3e590d595af78b6aa7849ea6cc564604837a",
+      "blockNumber": 28313,
+      "gasUsed": "118698"
+    },
+    {
+      "step": "B2e",
+      "function": "go3.castVote(ngo1)",
+      "txHash": "0x7bf5e4b04766b780e0d39cbacc874959a524d7a8153a8b66babbf234cc1458b2",
+      "blockNumber": 28314,
+      "gasUsed": "101598"
+    },
+    {
+      "step": "B2e",
+      "function": "ngo1.castVote(ngo1)",
+      "txHash": "0x739280b601131c586d1ecf1cbdc0550f4078ecca8c74c05bbd0be41b13af4694",
+      "blockNumber": 28315,
+      "gasUsed": "113611"
+    },
+    {
+      "step": "B2e",
+      "function": "donor1.castVote(ngo1)",
+      "txHash": "0x87817f886ad3783b67fd1918d75d1c422f4f42f6e343487d75d6c24afad67446",
+      "blockNumber": 28316,
+      "gasUsed": "82446"
+    },
+    {
+      "step": "B2e",
+      "function": "donor2.castVote(ngo2)",
+      "txHash": "0x03ce45c753af4b4c5e609324c55fb92299fffb3864acec4bca2bfb0e7b1e8165",
+      "blockNumber": 28317,
+      "gasUsed": "99546"
+    },
+    {
+      "step": "B2e",
+      "function": "beneficiary1.castVote(ngo2)",
+      "txHash": "0x09878b0eb1b8905070679eca6e7aa0250baaece8c5ddc32167a8effd3fcbb99f",
+      "blockNumber": 28318,
+      "gasUsed": "77560"
+    },
+    {
+      "step": "B3",
+      "function": "finalizeElection",
+      "txHash": "0x8edc3d74b66e8e859ef90f18897375b19b9b0f671f4727420fd16f0ecfaac2ac",
+      "blockNumber": 28336,
+      "gasUsed": "130697"
+    },
+    {
+      "step": "B4",
+      "function": "initiateMisconductVote",
+      "txHash": "0xedffdc978bcd9ba993853b3005dae4c5877edf939be69262cd796bd1dfa2ead5",
+      "blockNumber": 28337,
+      "gasUsed": "112441"
+    },
+    {
+      "step": "B5",
+      "function": "go1.castMisconductVote(true)",
+      "txHash": "0x0a41f656ee8d890c5149ff7b9fc336bb830a7fe9ae8b4c76dec26fbbd767b503",
+      "blockNumber": 28338,
+      "gasUsed": "85342"
+    },
+    {
+      "step": "B5",
+      "function": "go2.castMisconductVote(true)",
+      "txHash": "0x60640c8f3260e9a3b5313a506117099ed363988ddb677eaa794125cbf858e9f5",
+      "blockNumber": 28339,
+      "gasUsed": "68242"
+    },
+    {
+      "step": "B5",
+      "function": "go3.castMisconductVote(false)",
+      "txHash": "0xb3dcb93f5d5a8c41346360a3e6ad8979aa47b9aa4c10ed6986dfb20bf2dcac1b",
+      "blockNumber": 28340,
+      "gasUsed": "85317"
+    },
+    {
+      "step": "B5",
+      "function": "ngo2.castMisconductVote(true)",
+      "txHash": "0x58da5571e60d3024cb97eea210cd1b86d8000cee5c9c3c5db548b69e69536dfc",
+      "blockNumber": 28341,
+      "gasUsed": "68448"
+    },
+    {
+      "step": "B5",
+      "function": "donor1.castMisconductVote(false)",
+      "txHash": "0x63e375298883d92e3393a1cfe530cbc4dc7ac4dbc0186dec8dfea7f116db2457",
+      "blockNumber": 28342,
+      "gasUsed": "72618"
+    },
+    {
+      "step": "B6",
+      "function": "finalizeMisconductVote",
+      "txHash": "0x2e0c7df70d70d1e411500e5040abf9a6ba09b05f746872d059d11d22e186540f",
+      "blockNumber": 28360,
+      "gasUsed": "139442"
+    },
+    {
+      "step": "C1",
+      "function": "recordParticipation(go1, true)",
+      "txHash": "0x6d96fd896d49abd97c9eeaa253047d02d28fc2363f0d5078bb9653c633c4da60",
+      "blockNumber": 28361,
+      "gasUsed": "75741"
+    },
+    {
+      "step": "C1",
+      "function": "recordParticipation(go2, true)",
+      "txHash": "0x2cc26958afb69d4ce5375a3c71361212c551c2d85c0971165a4849bb82d723d7",
+      "blockNumber": 28362,
+      "gasUsed": "75741"
+    },
+    {
+      "step": "C1",
+      "function": "recordParticipation(go3, false)",
+      "txHash": "0xec3eadeebfaa30fc925ef1af0ae03ceeef69e8c883941b5ff64065d656f58a41",
+      "blockNumber": 28363,
+      "gasUsed": "75704"
+    },
+    {
+      "step": "C1",
+      "function": "recordParticipation(ngo1, true)",
+      "txHash": "0xf64073b341d682a7f9db0bf3f1b0c90411aee20e66c3e96f458e80f1a4cdc253",
+      "blockNumber": 28364,
+      "gasUsed": "75741"
+    },
+    {
+      "step": "C1",
+      "function": "recordParticipation(ngo2, true)",
+      "txHash": "0xa59b71c4284b8f711fc7418757e30a9b693b4241083038f56baa4ba49dba51f5",
+      "blockNumber": 28365,
+      "gasUsed": "75741"
+    },
+    {
+      "step": "C2",
+      "function": "updateScores",
+      "txHash": "0x37779161a804bc58a194fc44bb74bc0fbcd9214387ce54c8173112845e8846d1",
+      "blockNumber": 28366,
+      "gasUsed": "249205"
+    }
+  ]
+}

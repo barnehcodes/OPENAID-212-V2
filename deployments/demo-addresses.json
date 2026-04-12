@@ -1,0 +1,17 @@
+{
+  "network": "besu-local",
+  "chainId": 1337,
+  "deployedAt": "2026-03-17T00:30:53.244Z",
+  "deployer": "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73",
+  "mode": "DEMO — GovernanceDemo with 30s voting windows",
+  "durations": {
+    "VOTING_DURATION": "30 seconds",
+    "MISCONDUCT_VOTE_DURATION": "30 seconds"
+  },
+  "contracts": {
+    "Registry": "0xa1dc9167B1a8F201d15b48BdD5D77f8360845ceD",
+    "DonationManager": "0x625c70BAf2DFB2cF06Cf6673E6bBad1672427605",
+    "Governance": "0xE62b93777e666224cC8029c21a31311554e2F10E",
+    "ReputationEngine": "0x297E29CD7be020C211495f98A3D794a8ae000165"
+  }
+}

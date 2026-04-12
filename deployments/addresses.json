@@ -1,0 +1,12 @@
+{
+  "network": "besu-local",
+  "chainId": 1337,
+  "deployedAt": "2026-04-12T08:37:12.407Z",
+  "deployer": "0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73",
+  "contracts": {
+    "Registry": "0x0Be199A777EECc870a7b13045946Fef1803Dd9e1",
+    "DonationManager": "0xf03b5af17792D7F7707dc54474083BaCAD17e22F",
+    "Governance": "0x36A8bE2C24f812ed7a95f14ffEBDB5F778F61699",
+    "ReputationEngine": "0xD6470D46e2062c4E428375e2D21a0e549B104f3B"
+  }
+}
